@@ -185,7 +185,7 @@ def _handle_answer_faq(tc_id: str, args: dict[str, Any]) -> dict[str, Any]:
 
 def _handle_compose_claim_response(tc_id: str, args: dict[str, Any], call_id: str) -> dict[str, Any]:
     phone = normalize_phone(args.get("phone", ""))
-    cid = args.get("callId") or call_id
+    cid = call_id  # always use server-side call_id — LLM-provided callId is unreliable (template vars)
     if not phone:
         return {
             "toolCallId": tc_id,
