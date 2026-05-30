@@ -16,9 +16,10 @@ async function initVapi() {
   const { vapiPublicKey, vapiAssistantId } = await res.json()
   if (!vapiPublicKey) throw new Error("VAPI_PUBLIC_KEY not configured on server")
 
-  // Vapi loaded via <script> tag in index.html — available as window.Vapi
-  if (typeof window.Vapi !== "function") throw new Error("Vapi SDK failed to load — check network/CDN")
-  _vapi = new window.Vapi(vapiPublicKey)
+  const vapiMod = await import("https://esm.sh/@vapi-ai/web@2.5.2")
+  const VapiClass = vapiMod.default
+  if (typeof VapiClass !== "function") throw new Error("Vapi SDK failed to load — check network/CSP")
+  _vapi = new VapiClass(vapiPublicKey)
   _vapi._assistantId = vapiAssistantId
 
   _vapi.on("call-end", () => {
