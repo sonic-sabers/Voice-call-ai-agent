@@ -11,6 +11,6 @@ jobs:
     steps:
       - name: Ping health endpoint
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://observe-voiceai.onrender.com/health)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://voice-call-ai-agent.onrender.com/health)
           echo "Health check status: $STATUS"
           [ "$STATUS" = "200" ] || exit 1
