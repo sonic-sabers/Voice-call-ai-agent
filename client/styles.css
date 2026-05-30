@@ -470,3 +470,50 @@ tr.clickable-row { cursor: pointer; }
   border-radius: 4px;
   height: 14px;
 }
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px 0 4px;
+  flex-wrap: wrap;
+}
+.pagination:empty { display: none; }
+.pg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+  line-height: 1;
+  font-family: inherit;
+}
+.pg-btn:hover:not(:disabled) {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+.pg-btn:disabled {
+  opacity: .35;
+  cursor: default;
+}
+.pg-btn.active {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.pg-dots {
+  font-size: 13px;
+  color: var(--text-faint);
+  padding: 6px 4px;
+  user-select: none;
+}

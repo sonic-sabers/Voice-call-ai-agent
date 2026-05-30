@@ -5,41 +5,13 @@ const API_BASE = window.location.hostname === "localhost" || window.location.hos
 
 let _lastData = []
 
-// ── Dashboard auth ────────────────────────────────────────────────────────────
-// Operator enters DASHBOARD_SECRET once per browser session. Never fetched from server.
-const _SESSION_KEY = "observe_dashboard_token"
-// Set to true when user explicitly cancels the prompt — stops polling until page reload.
-let _authCancelled = false
-
-function getStoredSecret() {
-  return sessionStorage.getItem(_SESSION_KEY) || ""
-}
-
-function promptForSecret() {
-  const token = window.prompt(
-    "Dashboard access token required.\nEnter DASHBOARD_SECRET to continue:"
-  )
-  if (token === null) {
-    // User clicked Cancel — stop polling to avoid repeated prompts.
-    _authCancelled = true
-    return ""
-  }
-  if (token.trim()) {
-    _authCancelled = false
-    sessionStorage.setItem(_SESSION_KEY, token.trim())
-    return token.trim()
-  }
-  return ""
-}
-
-function authHeaders() {
-  const secret = getStoredSecret()
-  return secret ? { "X-Dashboard-Secret": secret } : {}
-}
-
-function clearStoredSecret() {
-  sessionStorage.removeItem(_SESSION_KEY)
-}
+// ── Dashboard auth (disabled) ─────────────────────────────────────────────────
+// const _SESSION_KEY = "observe_dashboard_token"
+// let _authCancelled = false
+// function getStoredSecret() { return sessionStorage.getItem(_SESSION_KEY) || "" }
+// function promptForSecret() { ... }
+// function authHeaders() { const secret = getStoredSecret(); return secret ? { "X-Dashboard-Secret": secret } : {} }
+// function clearStoredSecret() { sessionStorage.removeItem(_SESSION_KEY) }
 
 // ── Audio player state ────────────────────────────────────────────────────────
 let _audio = null
@@ -309,24 +281,9 @@ window.toggleCall = toggleCall
 
 // ── Dashboard data ────────────────────────────────────────────────────────────
 async function load() {
-  // Don't retry after user explicitly cancelled the auth prompt.
-  if (_authCancelled) return
   const dot = document.getElementById("status-dot")
   try {
-    if (!getStoredSecret()) promptForSecret()
-    // User cancelled inside promptForSecret — bail without fetching.
-    if (_authCancelled) {
-      dot.className = "status-dot error"
-      document.getElementById("last-updated").textContent = "Auth cancelled — reload to retry"
-      return
-    }
-    const res = await fetch(`${API_BASE}/api/interactions`, { headers: authHeaders() })
-    if (res.status === 401) {
-      clearStoredSecret()
-      document.getElementById("last-updated").textContent = "Access denied — reload to re-enter token"
-      dot.className = "status-dot error"
-      return
-    }
+    const res = await fetch(`${API_BASE}/api/interactions`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
     _lastData = data
@@ -346,8 +303,15 @@ async function load() {
 
 window.load = load
 
+// ── Pagination state ──────────────────────────────────────────────────────────
+const PAGE_SIZE = 10
+let _allRows = []
+let _currentPage = 1
+
 function render(rows) {
   rows.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+  _allRows = rows
+  _currentPage = 1
 
   const total      = rows.length
   const resolved   = rows.filter(r => r.outcome === "resolved").length
@@ -371,22 +335,36 @@ function render(rows) {
     </div>
   `).join("")
 
+  renderPage()
+}
+
+function renderPage() {
+  const rows = _allRows
+  const tbody = document.getElementById("table-body")
+
   if (rows.length === 0) {
-    document.getElementById("table-body").innerHTML =
-      `<tr><td colspan="6" class="empty">No calls yet. Make a test call to see data here.</td></tr>`
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">No calls yet. Make a test call to see data here.</td></tr>`
+    document.getElementById("pagination").innerHTML = ""
     return
   }
 
-  const tbody = document.getElementById("table-body")
-  tbody.innerHTML = rows.map((r, i) => {
+  const totalPages = Math.ceil(rows.length / PAGE_SIZE)
+  const page = Math.max(1, Math.min(_currentPage, totalPages))
+  _currentPage = page
+
+  const start = (page - 1) * PAGE_SIZE
+  const pageRows = rows.slice(start, start + PAGE_SIZE)
+
+  tbody.innerHTML = pageRows.map((r, i) => {
+    const globalIdx = start + i
     const ts = formatTime(r.timestamp)
     const playCell = r.recording_url
-      ? `<button class="row-play-btn" data-idx="${i}" aria-label="Play recording" onclick="event.stopPropagation()">
+      ? `<button class="row-play-btn" data-idx="${globalIdx}" aria-label="Play recording" onclick="event.stopPropagation()">
            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"/></svg>
          </button>`
       : `<span class="muted">—</span>`
     return `
-      <tr class="clickable-row" data-idx="${i}">
+      <tr class="clickable-row" data-idx="${globalIdx}">
         <td class="time-cell">${ts}</td>
         <td>
           <div class="caller-name">${esc(r.caller_name)}</div>
@@ -414,6 +392,42 @@ function render(rows) {
       openDrawer(rows[idx], true)
     })
   })
+
+  renderPagination(page, totalPages)
+}
+
+function renderPagination(page, totalPages) {
+  const el = document.getElementById("pagination")
+  if (totalPages <= 1) { el.innerHTML = ""; return }
+
+  const pages = paginationPages(page, totalPages)
+  const chevL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M15 18l-6-6 6-6"/></svg>`
+  const chevR = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M9 18l6-6-6-6"/></svg>`
+
+  el.innerHTML = [
+    `<button class="pg-btn" data-pg="${page - 1}" ${page === 1 ? "disabled" : ""}>${chevL} Previous</button>`,
+    ...pages.map(p =>
+      p === "…"
+        ? `<span class="pg-dots">···</span>`
+        : `<button class="pg-btn${p === page ? " active" : ""}" data-pg="${p}">${p}</button>`
+    ),
+    `<button class="pg-btn" data-pg="${page + 1}" ${page === totalPages ? "disabled" : ""}>Next ${chevR}</button>`,
+  ].join("")
+
+  el.querySelectorAll(".pg-btn[data-pg]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      _currentPage = parseInt(btn.dataset.pg, 10)
+      renderPage()
+      document.getElementById("interactions-table").scrollIntoView({ behavior: "smooth", block: "start" })
+    })
+  })
+}
+
+function paginationPages(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  if (current <= 4) return [1, 2, 3, 4, 5, "…", total]
+  if (current >= total - 3) return [1, "…", total - 4, total - 3, total - 2, total - 1, total]
+  return [1, "…", current - 1, current, current + 1, "…", total]
 }
 
 function pct(n, total) {
