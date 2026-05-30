@@ -16,4 +16,6 @@ async def client_config() -> dict[str, str]:
     return {
         "vapiPublicKey": cfg.vapi_public_key,
         "vapiAssistantId": cfg.vapi_assistant_id,
+        # dashboardSecret intentionally omitted — never send secrets to browser.
+        # Operator enters DASHBOARD_SECRET manually in the login prompt.
     }

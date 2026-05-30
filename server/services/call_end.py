@@ -36,9 +36,9 @@ def derive_outcome(transcript: str) -> str:
 
 
 async def handle_call_end(request: Request, prefetched_body: dict | None = None) -> JSONResponse:
-    # VAPI sends no custom headers on serverUrl calls — only reject if wrong secret is present.
-    secret_header = request.headers.get("x-vapi-secret")
-    if secret_header and not verify_vapi_secret(request):
+    # prefetched_body is only set when called from handle_tool_call, which already
+    # verified the VAPI secret. For direct webhook POSTs, always require auth.
+    if prefetched_body is None and not verify_vapi_secret(request):
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
     if prefetched_body is not None:

@@ -27,6 +27,8 @@ class Settings:
     openai_api_key: str = field(default="")
     vapi_public_key: str = field(default="")
     vapi_assistant_id: str = field(default="")
+    # ── Dashboard ─────────────────────────────────────────────────────────────
+    dashboard_secret: str = field(default="")
     # ── Server ────────────────────────────────────────────────────────────────
     port: int = field(default=DEFAULT_PORT)
 
@@ -53,5 +55,6 @@ def get_settings() -> Settings:
         openai_api_key=os.environ.get("OPENAI_API_KEY", ""),
         vapi_public_key=os.environ.get("VAPI_PUBLIC_KEY", ""),
         vapi_assistant_id=os.environ.get("VAPI_ASSISTANT_ID", ""),
+        dashboard_secret=os.environ.get("DASHBOARD_SECRET", ""),
         port=int(os.environ.get("PORT", str(DEFAULT_PORT))),
     )

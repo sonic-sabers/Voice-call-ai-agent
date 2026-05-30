@@ -21,3 +21,5 @@ services:
         sync: false
       - key: VAPI_ASSISTANT_ID
         sync: false
+      - key: DASHBOARD_SECRET
+        sync: false

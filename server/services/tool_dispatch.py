@@ -19,7 +19,7 @@ from fastapi.responses import JSONResponse
 from server.core.auth import verify_vapi_secret
 from server.core.constants import FAQ_FALLBACK, TOOL_ERROR_MESSAGE
 from server.core.phone import normalize_phone
-from server.core.state import authenticated_calls, call_session, pending_callers, save_state
+from server.core.state import _set_with_touch, authenticated_calls, call_session, pending_callers, save_state
 from server.services.cove import compose_claim_response
 from server.services.kb import query_knowledge_base
 from server.services.sheets import lookup_caller
@@ -90,10 +90,10 @@ def _handle_lookup_caller(tc_id: str, args: dict[str, Any], call_id: str) -> dic
         return {"toolCallId": tc_id, "result": json.dumps({"found": False})}
     # Store server-side — never trust LLM-provided name.
     # Return ONLY identity fields — claim data never exposed to LLM pre-auth.
-    pending_callers[call_id] = {
+    _set_with_touch(pending_callers, call_id, {
         "phone": phone,
         "caller_name": f"{record.first_name} {record.last_name}",
-    }
+    })
     return {
         "toolCallId": tc_id,
         "result": json.dumps(
@@ -114,12 +114,26 @@ def _handle_confirm_identity(tc_id: str, args: dict[str, Any], call_id: str) -> 
             "toolCallId": tc_id,
             "result": json.dumps({"confirmed": False, "error": "INVALID_PHONE"}),
         }
-    pending = pending_callers.get(call_id, {})
+    pending = pending_callers.get(call_id)
+    # Require lookup_caller to have run first and the phone to match what was looked up.
     if not pending:
-        log.warning("confirm_identity: no pending record for call_id=%s", call_id)
+        log.warning("confirm_identity: no pending record for call_id=%s — rejecting", call_id)
+        return {
+            "toolCallId": tc_id,
+            "result": json.dumps({"confirmed": False, "error": "NO_PENDING_LOOKUP"}),
+        }
+    if pending.get("phone") != phone:
+        log.warning(
+            "confirm_identity: phone mismatch for call_id=%s pending=%s claimed=%s",
+            call_id, pending.get("phone"), phone,
+        )
+        return {
+            "toolCallId": tc_id,
+            "result": json.dumps({"confirmed": False, "error": "PHONE_MISMATCH"}),
+        }
     caller_name = pending.get("caller_name", "Unknown")
-    authenticated_calls[call_id] = {"phone": phone}
-    call_session[call_id] = {"phone": phone, "caller_name": caller_name}
+    _set_with_touch(authenticated_calls, call_id, {"phone": phone})
+    _set_with_touch(call_session, call_id, {"phone": phone, "caller_name": caller_name})
     save_state()
     return {
         "toolCallId": tc_id,
@@ -157,8 +171,8 @@ def _handle_verify_identity(tc_id: str, args: dict[str, Any], call_id: str) -> d
     if verified:
         pending = pending_callers.get(call_id, {})
         caller_name = pending.get("caller_name", "Unknown")
-        authenticated_calls[call_id] = {"phone": phone}
-        call_session[call_id] = {"phone": phone, "caller_name": caller_name}
+        _set_with_touch(authenticated_calls, call_id, {"phone": phone})
+        _set_with_touch(call_session, call_id, {"phone": phone, "caller_name": caller_name})
         save_state()
         return {
             "toolCallId": tc_id,

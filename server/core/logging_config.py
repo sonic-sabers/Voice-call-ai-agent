@@ -8,7 +8,12 @@ try:
 except ImportError:
     from pythonjsonlogger.jsonlogger import JsonFormatter as _JsonFormatter  # type: ignore[no-redef]
 
-import colorlog
+try:
+    import colorlog as colorlog
+    _HAS_COLORLOG = True
+except ImportError:
+    colorlog = None  # type: ignore[assignment]
+    _HAS_COLORLOG = False
 
 _LEVEL_COLORS = {
     "DEBUG":    "cyan",
@@ -28,9 +33,9 @@ _COLOR_FMT = (
 def configure_logging() -> None:
     handler = logging.StreamHandler(sys.stdout)
 
-    if sys.stdout.isatty():
+    if sys.stdout.isatty() and _HAS_COLORLOG:
         # Local dev — colored human-readable output
-        formatter = colorlog.ColoredFormatter(
+        formatter = colorlog.ColoredFormatter(  # type: ignore[union-attr]
             _COLOR_FMT,
             log_colors=_LEVEL_COLORS,
             reset=True,

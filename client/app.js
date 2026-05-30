@@ -5,6 +5,34 @@ const API_BASE = window.location.hostname === "localhost" || window.location.hos
 
 let _lastData = []
 
+// ── Dashboard auth ────────────────────────────────────────────────────────────
+// Operator enters DASHBOARD_SECRET once per browser session. Never fetched from server.
+const _SESSION_KEY = "observe_dashboard_token"
+
+function getStoredSecret() {
+  return sessionStorage.getItem(_SESSION_KEY) || ""
+}
+
+function promptForSecret() {
+  const token = window.prompt(
+    "Dashboard access token required.\nEnter DASHBOARD_SECRET to continue:"
+  )
+  if (token && token.trim()) {
+    sessionStorage.setItem(_SESSION_KEY, token.trim())
+    return token.trim()
+  }
+  return ""
+}
+
+function authHeaders() {
+  const secret = getStoredSecret()
+  return secret ? { "X-Dashboard-Secret": secret } : {}
+}
+
+function clearStoredSecret() {
+  sessionStorage.removeItem(_SESSION_KEY)
+}
+
 // ── Audio player state ────────────────────────────────────────────────────────
 let _audio = null
 let _rafId = null
@@ -137,11 +165,19 @@ function openDrawer(row, autoPlay = false) {
     stopAudio()
   }
 
-  // Transcript link only
+  // Transcript link only — use DOM API to prevent href injection
   const linksEl = document.getElementById("drawer-links")
   const linksSection = document.getElementById("drawer-links-section")
-  if (row.transcript_url) {
-    linksEl.innerHTML = `<a class="drawer-link-btn" href="${row.transcript_url}" target="_blank" rel="noopener">📄 Transcript</a>`
+  linksEl.textContent = ""
+  const transcriptUrl = row.transcript_url || ""
+  if (transcriptUrl && transcriptUrl.startsWith("https://")) {
+    const a = document.createElement("a")
+    a.href = transcriptUrl
+    a.textContent = "📄 Transcript"
+    a.className = "drawer-link-btn"
+    a.target = "_blank"
+    a.rel = "noopener noreferrer"
+    linksEl.appendChild(a)
     linksSection.style.display = ""
   } else {
     linksSection.style.display = "none"
@@ -169,11 +205,22 @@ document.addEventListener("keydown", (e) => {
 let _vapi = null
 let _calling = false
 
-async function initVapi() {
-  if (_vapi) return _vapi
+let _configLoaded = false
+let _vapiConfig = {}
+
+async function loadConfig() {
+  if (_configLoaded) return _vapiConfig
   const res = await fetch(`${API_BASE}/api/config`)
   if (!res.ok) throw new Error("Failed to load config")
-  const { vapiPublicKey, vapiAssistantId } = await res.json()
+  _vapiConfig = await res.json()
+  _configLoaded = true
+  return _vapiConfig
+}
+
+async function initVapi() {
+  if (_vapi) return _vapi
+  const cfg = await loadConfig()
+  const { vapiPublicKey, vapiAssistantId } = cfg
   if (!vapiPublicKey) throw new Error("VAPI_PUBLIC_KEY not configured on server")
 
   const vapiMod = await import("https://esm.sh/@vapi-ai/web@2.5.2")
@@ -232,7 +279,14 @@ window.toggleCall = toggleCall
 async function load() {
   const dot = document.getElementById("status-dot")
   try {
-    const res = await fetch(`${API_BASE}/api/interactions`)
+    if (!getStoredSecret()) promptForSecret()
+    const res = await fetch(`${API_BASE}/api/interactions`, { headers: authHeaders() })
+    if (res.status === 401) {
+      clearStoredSecret()
+      document.getElementById("last-updated").textContent = "Access denied — re-enter token"
+      dot.className = "status-dot error"
+      return
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
     _lastData = data
