@@ -56,6 +56,7 @@ next-env.d.ts
 
 .agents/
 .windsurf/
+superpowers/
 .claude/
 .gstack/
 docs/

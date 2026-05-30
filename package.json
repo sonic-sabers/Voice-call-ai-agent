@@ -1,0 +1,12 @@
+{
+  "name": "observe-insurance-voiceai",
+  "version": "1.0.0",
+  "description": "Observe Insurance VoiceAI — monorepo (server + client)",
+  "private": true,
+  "scripts": {
+    "dev:server": "cd server && npm run dev",
+    "test:server": "cd server && npm test",
+    "seed": "cd server && npm run seed",
+    "install:all": "cd server && npm install"
+  }
+}
