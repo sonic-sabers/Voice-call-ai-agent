@@ -298,6 +298,106 @@ let _calling = false;
 let _micPermission = "unknown";
 let _micPermStatusHandle = null;
 
+// Active-call UI state
+let _callTimerInterval = null;
+let _callStartTime = null;
+let _muted = false;
+let _speakerOn = false;
+let _vapiAudioEls = [];  // audio elements created by VAPI/Daily during a call
+let _audioObserver = null;
+
+function startCallTimer() {
+  _callStartTime = Date.now();
+  const timerEl = document.getElementById("pac-timer");
+  if (!timerEl) return;
+  _callTimerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - _callStartTime) / 1000);
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    timerEl.textContent = `${m}:${s.toString().padStart(2, "0")}`;
+  }, 1000);
+}
+
+function stopCallTimer() {
+  if (_callTimerInterval) {
+    clearInterval(_callTimerInterval);
+    _callTimerInterval = null;
+  }
+  _callStartTime = null;
+  const timerEl = document.getElementById("pac-timer");
+  if (timerEl) timerEl.textContent = "0:00";
+}
+
+window.toggleMute = function toggleMute() {
+  if (!_vapi) return;
+  _muted = !_muted;
+  _vapi.setMuted(_muted);
+  const btn = document.getElementById("pac-mute-btn");
+  const label = btn?.querySelector(".pac-ctrl-label");
+  if (btn) {
+    btn.classList.toggle("active", _muted);
+    btn.setAttribute("aria-pressed", String(_muted));
+  }
+  if (label) label.textContent = _muted ? "Unmute" : "Mute";
+};
+
+function applyVolumeToCallAudio(volume) {
+  // Apply to any audio elements we tracked during the call
+  _vapiAudioEls.forEach((el) => { try { el.volume = volume; } catch {} });
+  // Also sweep all audio elements in case we missed any
+  document.querySelectorAll("audio").forEach((el) => { try { el.volume = volume; } catch {} });
+}
+
+function startAudioObserver() {
+  _vapiAudioEls = [];
+  // Snapshot any audio elements already in DOM (shouldn't be any, but safe)
+  document.querySelectorAll("audio").forEach((el) => _vapiAudioEls.push(el));
+
+  _audioObserver = new MutationObserver((mutations) => {
+    mutations.forEach((m) => {
+      m.addedNodes.forEach((node) => {
+        if (node.nodeName === "AUDIO") {
+          _vapiAudioEls.push(node);
+          // Apply current speaker state to newly injected audio element
+          node.volume = _speakerOn ? 1.0 : 1.0; // start at full volume; speaker toggle changes it
+        }
+        // Daily.co sometimes nests audio inside divs
+        if (node.querySelectorAll) {
+          node.querySelectorAll("audio").forEach((el) => {
+            if (!_vapiAudioEls.includes(el)) {
+              _vapiAudioEls.push(el);
+            }
+          });
+        }
+      });
+    });
+  });
+  _audioObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+function stopAudioObserver() {
+  if (_audioObserver) {
+    _audioObserver.disconnect();
+    _audioObserver = null;
+  }
+  _vapiAudioEls = [];
+}
+
+window.toggleSpeaker = function toggleSpeaker() {
+  _speakerOn = !_speakerOn;
+  const btn = document.getElementById("pac-speaker-btn");
+  const label = btn?.querySelector(".pac-ctrl-label");
+  if (btn) {
+    btn.classList.toggle("active", _speakerOn);
+    btn.setAttribute("aria-pressed", String(_speakerOn));
+  }
+  if (label) label.textContent = _speakerOn ? "Speaker On" : "Speaker";
+
+  // Speaker ON = loudspeaker (full volume), Speaker OFF = earpiece mode (lower volume)
+  const targetVolume = _speakerOn ? 1.0 : 0.3;
+  applyVolumeToCallAudio(targetVolume);
+};
+
 let _configLoaded = false;
 let _vapiConfig = {};
 
@@ -411,6 +511,34 @@ function setCallBtn(active) {
   label.textContent = active ? "End Call" : "Start Call";
   icon.innerHTML = active ? stopIcon() : phoneIcon();
   btn.disabled = false;
+
+  if (active) {
+    startCallTimer();
+    startAudioObserver();
+  } else {
+    stopCallTimer();
+    stopAudioObserver();
+    // Reset mute state
+    _muted = false;
+    const muteBtn = document.getElementById("pac-mute-btn");
+    if (muteBtn) {
+      muteBtn.classList.remove("active");
+      muteBtn.setAttribute("aria-pressed", "false");
+      const ml = muteBtn.querySelector(".pac-ctrl-label");
+      if (ml) ml.textContent = "Mute";
+    }
+    // Reset speaker state
+    _speakerOn = false;
+    const spkBtn = document.getElementById("pac-speaker-btn");
+    if (spkBtn) {
+      spkBtn.classList.remove("active");
+      spkBtn.setAttribute("aria-pressed", "false");
+      const sl = spkBtn.querySelector(".pac-ctrl-label");
+      if (sl) sl.textContent = "Speaker";
+    }
+    applyVolumeToCallAudio(1.0);
+  }
+
   syncCallStateUI(active);
 }
 
@@ -468,6 +596,8 @@ function syncCallStateUI(active) {
   const headerState = document.getElementById("header-call-state");
   const tabCustomer = document.getElementById("tab-customer");
   const tabDashboard = document.getElementById("tab-dashboard");
+  const phoneIdle = document.getElementById("phone-idle");
+  const phoneActive = document.getElementById("phone-active");
 
   if (customerState) {
     customerState.textContent = active ? "Call in progress" : "Ready to call";
@@ -478,6 +608,9 @@ function syncCallStateUI(active) {
   headerState.textContent = active ? "Call active" : "No active call";
   tabCustomer.classList.toggle("locked", active);
   tabDashboard.classList.toggle("locked", active);
+
+  if (phoneIdle) phoneIdle.style.display = active ? "none" : "";
+  if (phoneActive) phoneActive.style.display = active ? "" : "none";
 }
 
 function setActiveView(view) {

@@ -63,9 +63,3 @@ docs/
 AGENTS.md
 CLAUDE.md
 .env.local
-
-
-
-# for Dashboard - is call is active show modal which shows ongoing call ,
-# with mute button , End button, volume button (also add like speaker option, if phone switch speaker if not then reduce the volume of it)
-# also mention number '+1 (307) 218 0062' if anyone wants to call from outside
