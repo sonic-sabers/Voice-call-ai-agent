@@ -68,6 +68,28 @@
         <span id="drawer-outcome" class="badge"></span>
       </div>
 
+      <!-- Audio player -->
+      <div id="audio-player" class="audio-player" style="display:none">
+        <div class="ap-row ap-top">
+          <button id="ap-play" class="ap-play-btn" aria-label="Play/Pause"></button>
+          <div class="ap-progress-wrap">
+            <div id="ap-progress" class="ap-progress">
+              <div id="ap-fill" class="ap-fill"></div>
+              <div id="ap-thumb" class="ap-thumb"></div>
+            </div>
+          </div>
+          <div class="ap-times">
+            <span id="ap-current">0:00</span>
+            <span class="ap-sep">/</span>
+            <span id="ap-duration">0:00</span>
+          </div>
+        </div>
+        <div class="ap-row ap-bottom">
+          <svg class="ap-vol-icon" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+          <input id="ap-vol" class="ap-vol-slider" type="range" min="0" max="1" step="0.05" value="1" />
+        </div>
+      </div>
+
       <div class="drawer-section">
         <div class="drawer-section-label">Summary</div>
         <div id="drawer-summary" class="drawer-summary-text"></div>

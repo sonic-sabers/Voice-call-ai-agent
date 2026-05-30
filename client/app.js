@@ -5,8 +5,97 @@ const API_BASE = window.location.hostname === "localhost" || window.location.hos
 
 let _lastData = []
 
+// ── Audio player state ────────────────────────────────────────────────────────
+let _audio = null
+let _rafId = null
+
+function stopAudio() {
+  if (_audio) {
+    _audio.pause()
+    _audio = null
+  }
+  if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null }
+}
+
+function initAudioPlayer(url) {
+  stopAudio()
+  _audio = new Audio(url)
+  _audio.crossOrigin = "anonymous"
+
+  const player   = document.getElementById("audio-player")
+  const playBtn  = document.getElementById("ap-play")
+  const progress = document.getElementById("ap-progress")
+  const fill     = document.getElementById("ap-fill")
+  const thumb    = document.getElementById("ap-thumb")
+  const current  = document.getElementById("ap-current")
+  const duration = document.getElementById("ap-duration")
+  const volSlider = document.getElementById("ap-vol")
+
+  player.style.display = ""
+
+  function fmt(s) {
+    if (!isFinite(s)) return "0:00"
+    const m = Math.floor(s / 60), sec = Math.floor(s % 60)
+    return `${m}:${sec.toString().padStart(2, "0")}`
+  }
+
+  function tick() {
+    if (!_audio) return
+    const pct = _audio.duration ? (_audio.currentTime / _audio.duration) * 100 : 0
+    fill.style.width  = pct + "%"
+    thumb.style.left  = pct + "%"
+    current.textContent = fmt(_audio.currentTime)
+    _rafId = requestAnimationFrame(tick)
+  }
+
+  _audio.addEventListener("loadedmetadata", () => {
+    duration.textContent = fmt(_audio.duration)
+  })
+
+  _audio.addEventListener("play", () => {
+    playBtn.innerHTML = pauseIcon()
+    _rafId = requestAnimationFrame(tick)
+  })
+
+  _audio.addEventListener("pause", () => {
+    playBtn.innerHTML = playIcon()
+    if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null }
+  })
+
+  _audio.addEventListener("ended", () => {
+    playBtn.innerHTML = playIcon()
+    fill.style.width = "0%"
+    thumb.style.left = "0%"
+    current.textContent = "0:00"
+    if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null }
+  })
+
+  playBtn.onclick = () => {
+    if (_audio.paused) _audio.play().catch(() => {})
+    else _audio.pause()
+  }
+
+  progress.onclick = (e) => {
+    if (!_audio.duration) return
+    const rect = progress.getBoundingClientRect()
+    const ratio = (e.clientX - rect.left) / rect.width
+    _audio.currentTime = ratio * _audio.duration
+  }
+
+  volSlider.oninput = () => { if (_audio) _audio.volume = volSlider.value }
+
+  _audio.play().catch(() => {})
+}
+
+function playIcon() {
+  return `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M8 5v14l11-7z"/></svg>`
+}
+function pauseIcon() {
+  return `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`
+}
+
 // ── Detail drawer ─────────────────────────────────────────────────────────────
-function openDrawer(row) {
+function openDrawer(row, autoPlay = false) {
   document.getElementById("drawer-caller-name").textContent = row.caller_name || "Unknown"
   document.getElementById("drawer-caller-phone").textContent = row.caller_phone || "—"
   document.getElementById("drawer-time").textContent = formatTime(row.timestamp)
@@ -29,14 +118,30 @@ function openDrawer(row) {
     transcriptEl.parentElement.style.display = "none"
   }
 
+  // Audio player
+  const player = document.getElementById("audio-player")
+  if (row.recording_url) {
+    document.getElementById("ap-play").innerHTML = playIcon()
+    document.getElementById("ap-fill").style.width = "0%"
+    document.getElementById("ap-thumb").style.left = "0%"
+    document.getElementById("ap-current").textContent = "0:00"
+    document.getElementById("ap-duration").textContent = "0:00"
+    player.style.display = ""
+    if (autoPlay) initAudioPlayer(row.recording_url)
+    else {
+      stopAudio()
+      document.getElementById("ap-play").onclick = () => initAudioPlayer(row.recording_url)
+    }
+  } else {
+    player.style.display = "none"
+    stopAudio()
+  }
+
+  // Transcript link only
   const linksEl = document.getElementById("drawer-links")
   const linksSection = document.getElementById("drawer-links-section")
-  const linkItems = [
-    row.recording_url  ? `<a class="drawer-link-btn" href="${row.recording_url}"  target="_blank" rel="noopener">▶ Recording</a>`  : "",
-    row.transcript_url ? `<a class="drawer-link-btn" href="${row.transcript_url}" target="_blank" rel="noopener">📄 Transcript</a>` : "",
-  ].filter(Boolean)
-  if (linkItems.length) {
-    linksEl.innerHTML = linkItems.join("")
+  if (row.transcript_url) {
+    linksEl.innerHTML = `<a class="drawer-link-btn" href="${row.transcript_url}" target="_blank" rel="noopener">📄 Transcript</a>`
     linksSection.style.display = ""
   } else {
     linksSection.style.display = "none"
@@ -48,6 +153,7 @@ function openDrawer(row) {
 }
 
 function closeDrawer() {
+  stopAudio()
   document.getElementById("drawer-overlay").classList.remove("open")
   document.getElementById("detail-drawer").classList.remove("open")
   document.body.style.overflow = ""
@@ -180,10 +286,11 @@ function render(rows) {
   const tbody = document.getElementById("table-body")
   tbody.innerHTML = rows.map((r, i) => {
     const ts = formatTime(r.timestamp)
-    const links = [
-      r.recording_url  ? `<a class="link" href="${r.recording_url}"  target="_blank" rel="noopener" onclick="event.stopPropagation()">▶ Recording</a>`  : "",
-      r.transcript_url ? `<a class="link" href="${r.transcript_url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 Transcript</a>` : "",
-    ].join("")
+    const playCell = r.recording_url
+      ? `<button class="row-play-btn" data-idx="${i}" aria-label="Play recording" onclick="event.stopPropagation()">
+           <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"/></svg>
+         </button>`
+      : `<span class="muted">—</span>`
     return `
       <tr class="clickable-row" data-idx="${i}">
         <td class="time-cell">${ts}</td>
@@ -194,7 +301,7 @@ function render(rows) {
         <td><div class="summary-clickable" title="Click to view details">${esc(r.summary)}</div></td>
         <td><span class="badge badge-${esc(r.sentiment)}">${esc(r.sentiment)}</span></td>
         <td><span class="badge badge-${esc(r.outcome)}">${esc(r.outcome).replace("_", " ")}</span></td>
-        <td>${links || "<span class='muted'>—</span>"}</td>
+        <td>${playCell}</td>
       </tr>
     `
   }).join("")
@@ -203,6 +310,14 @@ function render(rows) {
     tr.addEventListener("click", () => {
       const idx = parseInt(tr.dataset.idx, 10)
       openDrawer(rows[idx])
+    })
+  })
+
+  tbody.querySelectorAll(".row-play-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation()
+      const idx = parseInt(btn.dataset.idx, 10)
+      openDrawer(rows[idx], true)
     })
   })
 }
