@@ -16,9 +16,9 @@ async function initVapi() {
   const { vapiPublicKey, vapiAssistantId } = await res.json()
   if (!vapiPublicKey) throw new Error("VAPI_PUBLIC_KEY not configured on server")
 
-  // Dynamic ESM import — works in all modern browsers without a bundler
-  const { default: Vapi } = await import("https://esm.sh/@vapi-ai/web@2.5.2")
-  _vapi = new Vapi(vapiPublicKey)
+  // Vapi loaded via <script> tag in index.html — available as window.Vapi
+  if (typeof window.Vapi !== "function") throw new Error("Vapi SDK failed to load — check network/CDN")
+  _vapi = new window.Vapi(vapiPublicKey)
   _vapi._assistantId = vapiAssistantId
 
   _vapi.on("call-end", () => {
