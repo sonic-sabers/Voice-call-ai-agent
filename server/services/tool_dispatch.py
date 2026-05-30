@@ -233,6 +233,12 @@ async def handle_tool_call(request: Request) -> JSONResponse:
 
     msg = body.get("message", {})
     log.debug("tool webhook body: %s", json.dumps(body)[:500])
+
+    # VAPI sends all server messages to serverUrl — route end-of-call reports here too.
+    if msg.get("type") == "end-of-call-report":
+        from server.services.call_end import handle_call_end  # local import avoids circular
+        return await handle_call_end(request, prefetched_body=body)
+
     raw_calls: list[dict[str, Any]] = msg.get("toolCallList", [])
     call_id: str = msg.get("call", {}).get("id", "")
 

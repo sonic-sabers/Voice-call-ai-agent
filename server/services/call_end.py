@@ -35,16 +35,19 @@ def derive_outcome(transcript: str) -> str:
     return "resolved"
 
 
-async def handle_call_end(request: Request) -> JSONResponse:
+async def handle_call_end(request: Request, prefetched_body: dict | None = None) -> JSONResponse:
     # VAPI sends no custom headers on serverUrl calls — only reject if wrong secret is present.
     secret_header = request.headers.get("x-vapi-secret")
     if secret_header and not verify_vapi_secret(request):
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    if prefetched_body is not None:
+        body = prefetched_body
+    else:
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON"}, status_code=400)
 
     msg = body.get("message", {})
     artifact = msg.get("artifact", {})
