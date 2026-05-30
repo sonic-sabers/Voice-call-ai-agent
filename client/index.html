@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Observe Insurance — Call Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-left">
+        <div class="logo">OI</div>
+        <div>
+          <h1>Observe Insurance</h1>
+          <p class="subtitle">VoiceAI Claims Dashboard</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <span id="status-dot" class="status-dot"></span>
+        <span id="last-updated" class="muted">Loading…</span>
+      </div>
+    </header>
+
+    <div class="stats-grid" id="stats"></div>
+
+    <section>
+      <div class="section-header">
+        <h2>Recent Interactions</h2>
+        <button id="refresh-btn" class="btn-refresh" onclick="load()">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table id="interactions-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Caller</th>
+              <th>Summary</th>
+              <th>Sentiment</th>
+              <th>Outcome</th>
+              <th>Links</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr><td colspan="6" class="empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <script src="constants.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
