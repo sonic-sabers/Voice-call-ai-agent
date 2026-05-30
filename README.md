@@ -29,6 +29,20 @@ Inbound claims-support voice agent for Observe Insurance - authentication, claim
 4. **Customer not found** - provide a phone not in the sheet → not-found branch
 5. **Escalation** - say "I want to speak to a representative" at any point
 
+## Screenshots
+
+**Customer page - ready to call**
+![Customer Page](public/Customer-Page.png)
+
+**Active call - caller details + talk guide**
+![Active Customer Call](public/Active-customer-call.png)
+
+**Dashboard - call history, sentiment, outcomes**
+![Dashboard Page](public/Dashboard-Page.png)
+
+**Conversation detail - summary + recording**
+![Conversation Details](public/Conversation-Details.png)
+
 ## Feature Coverage
 
 | Feature | Implementation |
