@@ -32,7 +32,7 @@ Inbound claims-support voice agent for Observe Insurance - authentication, claim
 ## Screenshots
 
 **Customer page - ready to call**
-![Customer Page](public/Customer-Page.png)
+![Customer Page](public/Customer-Page-open.png)
 
 **Active call - caller details + talk guide**
 ![Active Customer Call](public/Active-customer-call.png)
