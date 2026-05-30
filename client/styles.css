@@ -97,6 +97,24 @@ h1 { font-size: 20px; font-weight: 700; }
 }
 section h2 { font-size: 15px; font-weight: 700; }
 
+.btn-call {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-call:hover { background: #4338ca; }
+.btn-call.active { background: #ef4444; }
+.btn-call:disabled { opacity: .5; cursor: not-allowed; }
+
 .btn-refresh {
   font-size: 12px;
   padding: 5px 12px;

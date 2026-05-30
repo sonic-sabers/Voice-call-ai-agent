@@ -25,6 +25,8 @@ class Settings:
     airtable_api_key: str = field(default="")
     airtable_base_id: str = field(default="")
     openai_api_key: str = field(default="")
+    vapi_public_key: str = field(default="")
+    vapi_assistant_id: str = field(default="")
     # ── Server ────────────────────────────────────────────────────────────────
     port: int = field(default=DEFAULT_PORT)
 
@@ -49,5 +51,7 @@ def get_settings() -> Settings:
         airtable_api_key=os.environ.get("AIRTABLE_API_KEY", ""),
         airtable_base_id=os.environ.get("AIRTABLE_BASE_ID", ""),
         openai_api_key=os.environ.get("OPENAI_API_KEY", ""),
+        vapi_public_key=os.environ.get("VAPI_PUBLIC_KEY", ""),
+        vapi_assistant_id=os.environ.get("VAPI_ASSISTANT_ID", ""),
         port=int(os.environ.get("PORT", str(DEFAULT_PORT))),
     )

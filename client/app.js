@@ -1,9 +1,64 @@
 // C is loaded by constants.js (see index.html)
 const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? `${window.location.protocol}//${window.location.hostname}:${C.DEV_PORT}`
-  : ""  // same origin on Railway
+  : ""  // same origin on Render
 
 let _lastData = []
+
+// ── VAPI browser call ─────────────────────────────────────────────────────────
+let _vapi = null
+let _calling = false
+
+async function initVapi() {
+  if (_vapi) return _vapi
+  const res = await fetch(`${API_BASE}/api/config`)
+  if (!res.ok) throw new Error("Failed to load config")
+  const { vapiPublicKey, vapiAssistantId } = await res.json()
+  if (!vapiPublicKey) throw new Error("VAPI_PUBLIC_KEY not configured on server")
+  _vapi = new Vapi(vapiPublicKey)
+  _vapi.on("call-end", () => {
+    _calling = false
+    setCallBtn(false)
+    setTimeout(load, 3000)  // refresh table after call ends
+  })
+  _vapi.on("error", (e) => {
+    console.error("VAPI error", e)
+    _calling = false
+    setCallBtn(false)
+  })
+  _vapi._assistantId = vapiAssistantId
+  return _vapi
+}
+
+function setCallBtn(active) {
+  const btn = document.getElementById("call-btn")
+  const label = document.getElementById("call-label")
+  const icon = document.getElementById("call-icon")
+  btn.classList.toggle("active", active)
+  label.textContent = active ? "End Call" : "Start Call"
+  icon.textContent = active ? "⏹" : "📞"
+  btn.disabled = false
+}
+
+async function toggleCall() {
+  const btn = document.getElementById("call-btn")
+  btn.disabled = true
+  try {
+    const vapi = await initVapi()
+    if (_calling) {
+      vapi.stop()
+      _calling = false
+      setCallBtn(false)
+    } else {
+      await vapi.start(vapi._assistantId)
+      _calling = true
+      setCallBtn(true)
+    }
+  } catch (e) {
+    alert("Could not start call: " + e.message)
+    btn.disabled = false
+  }
+}
 
 async function load() {
   const dot = document.getElementById("status-dot")
