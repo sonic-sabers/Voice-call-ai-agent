@@ -1,9 +1,46 @@
 // C is loaded by constants.js (see index.html)
-const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-  ? `${window.location.protocol}//${window.location.hostname}:${C.DEV_PORT}`
-  : ""  // same origin on Render
+const API_BASE =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1"
+    ? `${window.location.protocol}//${window.location.hostname}:${C.DEV_PORT}`
+    : ""; // same origin on Render
 
-let _lastData = []
+let _lastData = [];
+let _activeView = "customer";
+let _selectedCallerPhone = null;
+
+const CALLER_PROFILES = {
+  "+14085550192": {
+    phone: "+14085550192",
+    first_name: "Maya",
+    last_name: "Patel",
+    dob: "1987-09-14",
+    claim_id: "CLM-2847",
+    claim_status: "approved",
+    docs_required: "—",
+    policy_number: "POL-100192",
+  },
+  "+13125550371": {
+    phone: "+13125550371",
+    first_name: "Carlos",
+    last_name: "Rivera",
+    dob: "1992-04-03",
+    claim_id: "CLM-3105",
+    claim_status: "requires documentation",
+    docs_required: "radiology report",
+    policy_number: "POL-100371",
+  },
+  "+17145550884": {
+    phone: "+17145550884",
+    first_name: "Amara",
+    last_name: "Okonkwo",
+    dob: "1979-11-28",
+    claim_id: "CLM-4422",
+    claim_status: "pending",
+    docs_required: "—",
+    policy_number: "POL-100884",
+  },
+};
 
 // ── Dashboard auth (disabled) ─────────────────────────────────────────────────
 // const _SESSION_KEY = "observe_dashboard_token"
@@ -14,362 +51,651 @@ let _lastData = []
 // function clearStoredSecret() { sessionStorage.removeItem(_SESSION_KEY) }
 
 // ── Audio player state ────────────────────────────────────────────────────────
-let _audio = null
-let _rafId = null
+let _audio = null;
+let _rafId = null;
 
 function stopAudio() {
   if (_audio) {
-    _audio.pause()
-    _audio = null
+    _audio.pause();
+    _audio = null;
   }
-  if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null }
+  if (_rafId) {
+    cancelAnimationFrame(_rafId);
+    _rafId = null;
+  }
 }
 
 function initAudioPlayer(url) {
-  stopAudio()
+  stopAudio();
   // Clear any previous error message before loading new audio.
-  const prevErr = document.querySelector("#audio-player .ap-error")
-  if (prevErr) prevErr.textContent = ""
-  _audio = new Audio(url)
-  _audio.crossOrigin = "anonymous"
+  const prevErr = document.querySelector("#audio-player .ap-error");
+  if (prevErr) prevErr.textContent = "";
+  _audio = new Audio(url);
+  _audio.crossOrigin = "anonymous";
 
-  const player   = document.getElementById("audio-player")
-  const playBtn  = document.getElementById("ap-play")
-  const progress = document.getElementById("ap-progress")
-  const fill     = document.getElementById("ap-fill")
-  const thumb    = document.getElementById("ap-thumb")
-  const current  = document.getElementById("ap-current")
-  const duration = document.getElementById("ap-duration")
-  const volSlider = document.getElementById("ap-vol")
+  const player = document.getElementById("audio-player");
+  const playBtn = document.getElementById("ap-play");
+  const progress = document.getElementById("ap-progress");
+  const fill = document.getElementById("ap-fill");
+  const thumb = document.getElementById("ap-thumb");
+  const current = document.getElementById("ap-current");
+  const duration = document.getElementById("ap-duration");
+  const volSlider = document.getElementById("ap-vol");
 
-  player.style.display = ""
+  player.style.display = "";
 
   function fmt(s) {
-    if (!isFinite(s)) return "0:00"
-    const m = Math.floor(s / 60), sec = Math.floor(s % 60)
-    return `${m}:${sec.toString().padStart(2, "0")}`
+    if (!isFinite(s)) return "0:00";
+    const m = Math.floor(s / 60),
+      sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
   }
 
   function tick() {
-    if (!_audio) return
-    const pct = _audio.duration ? (_audio.currentTime / _audio.duration) * 100 : 0
-    fill.style.width  = pct + "%"
-    thumb.style.left  = pct + "%"
-    current.textContent = fmt(_audio.currentTime)
-    _rafId = requestAnimationFrame(tick)
+    if (!_audio) return;
+    const pct = _audio.duration
+      ? (_audio.currentTime / _audio.duration) * 100
+      : 0;
+    fill.style.width = pct + "%";
+    thumb.style.left = pct + "%";
+    current.textContent = fmt(_audio.currentTime);
+    _rafId = requestAnimationFrame(tick);
   }
 
   _audio.addEventListener("loadedmetadata", () => {
-    duration.textContent = fmt(_audio.duration)
-  })
+    duration.textContent = fmt(_audio.duration);
+  });
 
   _audio.addEventListener("play", () => {
-    playBtn.innerHTML = pauseIcon()
-    _rafId = requestAnimationFrame(tick)
-  })
+    playBtn.innerHTML = pauseIcon();
+    _rafId = requestAnimationFrame(tick);
+  });
 
   _audio.addEventListener("pause", () => {
-    playBtn.innerHTML = playIcon()
-    if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null }
-  })
+    playBtn.innerHTML = playIcon();
+    if (_rafId) {
+      cancelAnimationFrame(_rafId);
+      _rafId = null;
+    }
+  });
 
   _audio.addEventListener("ended", () => {
-    playBtn.innerHTML = playIcon()
-    fill.style.width = "0%"
-    thumb.style.left = "0%"
-    current.textContent = "0:00"
-    if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null }
-  })
+    playBtn.innerHTML = playIcon();
+    fill.style.width = "0%";
+    thumb.style.left = "0%";
+    current.textContent = "0:00";
+    if (_rafId) {
+      cancelAnimationFrame(_rafId);
+      _rafId = null;
+    }
+  });
 
   playBtn.onclick = () => {
-    if (_audio.paused) _audio.play().catch((err) => {
-      console.warn("audio play failed:", err)
-      showAudioError("Playback failed — recording may be unavailable or blocked by browser security.")
-    })
-    else _audio.pause()
-  }
+    if (_audio.paused)
+      _audio.play().catch((err) => {
+        console.warn("audio play failed:", err);
+        showAudioError(
+          "Playback failed — recording may be unavailable or blocked by browser security.",
+        );
+      });
+    else _audio.pause();
+  };
 
   progress.onclick = (e) => {
-    if (!_audio.duration) return
-    const rect = progress.getBoundingClientRect()
-    const ratio = (e.clientX - rect.left) / rect.width
-    _audio.currentTime = ratio * _audio.duration
-  }
+    if (!_audio.duration) return;
+    const rect = progress.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    _audio.currentTime = ratio * _audio.duration;
+  };
 
   _audio.addEventListener("error", () => {
-    showAudioError("Could not load recording — it may have expired or be unavailable.")
-  })
+    showAudioError(
+      "Could not load recording — it may have expired or be unavailable.",
+    );
+  });
 
-  volSlider.oninput = () => { if (_audio) _audio.volume = volSlider.value }
+  volSlider.oninput = () => {
+    if (_audio) _audio.volume = volSlider.value;
+  };
 
   _audio.play().catch((err) => {
-    showAudioError("Playback failed — recording may be unavailable or blocked by browser security.")
-    console.warn("audio autoplay failed:", err)
-  })
+    showAudioError(
+      "Playback failed — recording may be unavailable or blocked by browser security.",
+    );
+    console.warn("audio autoplay failed:", err);
+  });
 }
 
 function showAudioError(msg) {
-  const player = document.getElementById("audio-player")
-  let errEl = player.querySelector(".ap-error")
+  const player = document.getElementById("audio-player");
+  let errEl = player.querySelector(".ap-error");
   if (!errEl) {
-    errEl = document.createElement("div")
-    errEl.className = "ap-error"
-    player.appendChild(errEl)
+    errEl = document.createElement("div");
+    errEl.className = "ap-error";
+    player.appendChild(errEl);
   }
-  errEl.textContent = msg
+  errEl.textContent = msg;
 }
 
 function playIcon() {
-  return `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M8 5v14l11-7z"/></svg>`
+  return `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M8 5v14l11-7z"/></svg>`;
 }
 function pauseIcon() {
-  return `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`
+  return `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
 }
 function phoneIcon() {
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.91.33 1.8.62 2.65a2 2 0 0 1-.45 2.11L8.09 9.67a16 16 0 0 0 6.24 6.24l1.19-1.19a2 2 0 0 1 2.11-.45c.85.29 1.74.5 2.65.62A2 2 0 0 1 22 16.92z"/></svg>`
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.91.33 1.8.62 2.65a2 2 0 0 1-.45 2.11L8.09 9.67a16 16 0 0 0 6.24 6.24l1.19-1.19a2 2 0 0 1 2.11-.45c.85.29 1.74.5 2.65.62A2 2 0 0 1 22 16.92z"/></svg>`;
 }
 function stopIcon() {
-  return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`
+  return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
 }
 
 // ── Detail drawer ─────────────────────────────────────────────────────────────
 function openDrawer(row, autoPlay = false) {
-  document.getElementById("drawer-caller-name").textContent = row.caller_name || "Unknown"
-  document.getElementById("drawer-caller-phone").textContent = row.caller_phone || "—"
-  document.getElementById("drawer-time").textContent = formatTime(row.timestamp)
+  document.getElementById("drawer-caller-name").textContent =
+    row.caller_name || "Unknown";
+  document.getElementById("drawer-caller-phone").textContent =
+    row.caller_phone || "—";
+  document.getElementById("drawer-time").textContent = formatTime(
+    row.timestamp,
+  );
 
-  const sentimentEl = document.getElementById("drawer-sentiment")
-  sentimentEl.textContent = row.sentiment || ""
-  sentimentEl.className = `badge badge-${esc(row.sentiment)}`
+  const sentimentEl = document.getElementById("drawer-sentiment");
+  sentimentEl.textContent = row.sentiment || "";
+  sentimentEl.className = `badge badge-${esc(row.sentiment)}`;
 
-  const outcomeEl = document.getElementById("drawer-outcome")
-  outcomeEl.textContent = (row.outcome || "").replace("_", " ")
-  outcomeEl.className = `badge badge-${esc(row.outcome)}`
+  const outcomeEl = document.getElementById("drawer-outcome");
+  outcomeEl.textContent = (row.outcome || "").replace("_", " ");
+  outcomeEl.className = `badge badge-${esc(row.outcome)}`;
 
-  document.getElementById("drawer-summary").textContent = row.summary || "No summary available."
+  document.getElementById("drawer-summary").textContent =
+    row.summary || "No summary available.";
 
-  const transcriptEl = document.getElementById("drawer-transcript")
+  const transcriptEl = document.getElementById("drawer-transcript");
   if (row.transcript) {
-    transcriptEl.textContent = row.transcript
-    transcriptEl.parentElement.style.display = ""
+    transcriptEl.textContent = row.transcript;
+    transcriptEl.parentElement.style.display = "";
   } else {
-    transcriptEl.parentElement.style.display = "none"
+    transcriptEl.parentElement.style.display = "none";
   }
 
   // Audio player
-  const player = document.getElementById("audio-player")
+  const player = document.getElementById("audio-player");
   if (row.recording_url) {
-    document.getElementById("ap-play").innerHTML = playIcon()
-    document.getElementById("ap-fill").style.width = "0%"
-    document.getElementById("ap-thumb").style.left = "0%"
-    document.getElementById("ap-current").textContent = "0:00"
-    document.getElementById("ap-duration").textContent = "0:00"
-    player.style.display = ""
-    if (autoPlay) initAudioPlayer(row.recording_url)
+    document.getElementById("ap-play").innerHTML = playIcon();
+    document.getElementById("ap-fill").style.width = "0%";
+    document.getElementById("ap-thumb").style.left = "0%";
+    document.getElementById("ap-current").textContent = "0:00";
+    document.getElementById("ap-duration").textContent = "0:00";
+    player.style.display = "";
+    if (autoPlay) initAudioPlayer(row.recording_url);
     else {
-      stopAudio()
-      document.getElementById("ap-play").onclick = () => initAudioPlayer(row.recording_url)
+      stopAudio();
+      document.getElementById("ap-play").onclick = () =>
+        initAudioPlayer(row.recording_url);
     }
   } else {
-    player.style.display = "none"
-    stopAudio()
+    player.style.display = "none";
+    stopAudio();
   }
 
   // Transcript link only — use DOM API to prevent href injection
-  const linksEl = document.getElementById("drawer-links")
-  const linksSection = document.getElementById("drawer-links-section")
-  linksEl.textContent = ""
-  const transcriptUrl = row.transcript_url || ""
+  const linksEl = document.getElementById("drawer-links");
+  const linksSection = document.getElementById("drawer-links-section");
+  linksEl.textContent = "";
+  const transcriptUrl = row.transcript_url || "";
   if (transcriptUrl && transcriptUrl.startsWith("https://")) {
-    const a = document.createElement("a")
-    a.href = transcriptUrl
-    a.textContent = "📄 Transcript"
-    a.className = "drawer-link-btn"
-    a.target = "_blank"
-    a.rel = "noopener noreferrer"
-    linksEl.appendChild(a)
-    linksSection.style.display = ""
+    const a = document.createElement("a");
+    a.href = transcriptUrl;
+    a.textContent = "📄 Transcript";
+    a.className = "drawer-link-btn";
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    linksEl.appendChild(a);
+    linksSection.style.display = "";
   } else {
-    linksSection.style.display = "none"
+    linksSection.style.display = "none";
   }
 
-  document.getElementById("drawer-overlay").classList.add("open")
-  document.getElementById("detail-drawer").classList.add("open")
-  document.body.style.overflow = "hidden"
+  document.getElementById("drawer-overlay").classList.add("open");
+  document.getElementById("detail-drawer").classList.add("open");
+  document.body.style.overflow = "hidden";
 }
 
 function closeDrawer() {
-  stopAudio()
-  document.getElementById("drawer-overlay").classList.remove("open")
-  document.getElementById("detail-drawer").classList.remove("open")
-  document.body.style.overflow = ""
+  stopAudio();
+  document.getElementById("drawer-overlay").classList.remove("open");
+  document.getElementById("detail-drawer").classList.remove("open");
+  document.body.style.overflow = "";
 }
 
-window.closeDrawer = closeDrawer
+window.closeDrawer = closeDrawer;
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeDrawer()
-})
+  if (e.key === "Escape") closeDrawer();
+});
 
 // ── VAPI browser call ─────────────────────────────────────────────────────────
-let _vapi = null
-let _calling = false
+let _vapi = null;
+let _calling = false;
+let _micPermission = "unknown";
+let _micPermStatusHandle = null;
 
-let _configLoaded = false
-let _vapiConfig = {}
+let _configLoaded = false;
+let _vapiConfig = {};
 
 async function loadConfig() {
-  if (_configLoaded) return _vapiConfig
-  const res = await fetch(`${API_BASE}/api/config`)
-  if (!res.ok) throw new Error("Failed to load config")
-  _vapiConfig = await res.json()
-  _configLoaded = true
-  return _vapiConfig
+  if (_configLoaded) return _vapiConfig;
+  const res = await fetch(`${API_BASE}/api/config`);
+  if (!res.ok) throw new Error("Failed to load config");
+  _vapiConfig = await res.json();
+  _configLoaded = true;
+  return _vapiConfig;
 }
 
 async function initVapi() {
-  if (_vapi) return _vapi
-  const cfg = await loadConfig()
-  const { vapiPublicKey, vapiAssistantId } = cfg
-  if (!vapiPublicKey) throw new Error("VAPI_PUBLIC_KEY not configured on server")
+  if (_vapi) return _vapi;
+  const cfg = await loadConfig();
+  const { vapiPublicKey, vapiAssistantId } = cfg;
+  if (!vapiPublicKey)
+    throw new Error("VAPI_PUBLIC_KEY not configured on server");
 
-  const vapiMod = await import("https://esm.sh/@vapi-ai/web@2.5.2")
-  const VapiClass = vapiMod.default
-  if (typeof VapiClass !== "function") throw new Error("Vapi SDK failed to load — check network/CSP")
-  _vapi = new VapiClass(vapiPublicKey)
-  _vapi._assistantId = vapiAssistantId
+  const vapiMod = await import("https://esm.sh/@vapi-ai/web@2.5.2");
+  const VapiClass = vapiMod.default;
+  if (typeof VapiClass !== "function")
+    throw new Error("Vapi SDK failed to load — check network/CSP");
+  _vapi = new VapiClass(vapiPublicKey);
+  _vapi._assistantId = vapiAssistantId;
 
   _vapi.on("call-end", () => {
-    _calling = false
-    setCallBtn(false)
-    setTimeout(load, 3000)
-  })
+    _calling = false;
+    setCallBtn(false);
+    _selectedCallerPhone = null;
+    try {
+      renderCustomerView(_lastData);
+    } catch {}
+    setTimeout(load, 3000);
+  });
   _vapi.on("error", (e) => {
-    console.error("VAPI error", e)
-    _calling = false
-    setCallBtn(false)
-  })
-  return _vapi
+    console.error("VAPI error", e);
+    _calling = false;
+    setCallBtn(false);
+  });
+  return _vapi;
+}
+
+function micIcon() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/><path d="M8 23h8"/></svg>`;
+}
+
+function updateMicPermissionUI() {
+  const micBtn = document.getElementById("mic-permission-btn");
+  const callBtn = document.getElementById("call-btn");
+  if (!micBtn || !callBtn) return;
+
+  micBtn.className = "btn-mic-status";
+  if (_micPermission === "granted") {
+    micBtn.classList.add("mic-granted");
+    micBtn.textContent = "Mic: allowed";
+    callBtn.disabled = false;
+    return;
+  }
+  if (_micPermission === "prompt") {
+    micBtn.classList.add("mic-prompt");
+    micBtn.textContent = "Mic: tap to allow";
+    callBtn.disabled = false;
+    return;
+  }
+  if (_micPermission === "denied") {
+    micBtn.classList.add("mic-denied");
+    micBtn.textContent = "Mic: blocked";
+    callBtn.disabled = true;
+    return;
+  }
+
+  micBtn.classList.add("mic-unknown");
+  micBtn.textContent = "Mic: unavailable";
+  callBtn.disabled = true;
+}
+
+async function refreshMicPermission(requestPrompt = false) {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    _micPermission = "unavailable";
+    updateMicPermissionUI();
+    return _micPermission;
+  }
+
+  if (navigator.permissions?.query) {
+    try {
+      const status = await navigator.permissions.query({ name: "microphone" });
+      _micPermStatusHandle = status;
+      _micPermission = status.state;
+      status.onchange = () => {
+        _micPermission = status.state;
+        updateMicPermissionUI();
+      };
+    } catch {
+      _micPermission = "prompt";
+    }
+  } else {
+    _micPermission = "prompt";
+  }
+
+  if (requestPrompt && _micPermission !== "granted") {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      _micPermission = "granted";
+    } catch {
+      _micPermission = "denied";
+    }
+  }
+
+  updateMicPermissionUI();
+  return _micPermission;
 }
 
 function setCallBtn(active) {
-  const btn = document.getElementById("call-btn")
-  const label = document.getElementById("call-label")
-  const icon = document.getElementById("call-icon")
-  btn.classList.toggle("active", active)
-  label.textContent = active ? "End Call" : "Start Call"
-  icon.innerHTML = active ? stopIcon() : phoneIcon()
-  btn.disabled = false
+  const btn = document.getElementById("call-btn");
+  const label = document.getElementById("call-label");
+  const icon = document.getElementById("call-icon");
+  btn.classList.toggle("active", active);
+  label.textContent = active ? "End Call" : "Start Call";
+  icon.innerHTML = active ? stopIcon() : phoneIcon();
+  if (!active) {
+    btn.disabled = _micPermission === "denied" || _micPermission === "unavailable";
+  } else {
+    btn.disabled = false;
+  }
+  syncCallStateUI(active);
 }
 
 async function toggleCall() {
-  const btn = document.getElementById("call-btn")
-  btn.disabled = true
+  const btn = document.getElementById("call-btn");
+  if (!_calling) {
+    const permission = await refreshMicPermission(true);
+    if (permission !== "granted") {
+      alert("Microphone access is required to start a call. Please allow mic access in your browser.");
+      setCallBtn(false);
+      return;
+    }
+  }
+  btn.disabled = true;
   try {
-    const vapi = await initVapi()
+    const vapi = await initVapi();
     if (_calling) {
-      vapi.stop()
-      _calling = false
-      setCallBtn(false)
+      vapi.stop();
+      _calling = false;
+      setCallBtn(false);
     } else {
-      await vapi.start(vapi._assistantId)
-      _calling = true
-      setCallBtn(true)
+      await vapi.start(vapi._assistantId);
+      _calling = true;
+      setCallBtn(true);
     }
   } catch (e) {
-    alert("Could not start call: " + e.message)
-    btn.disabled = false
+    alert("Could not start call: " + e.message);
+    setCallBtn(false);
   }
 }
 
 // Expose to HTML onclick (module scripts don't pollute window automatically)
-window.toggleCall = toggleCall
+window.toggleCall = toggleCall;
+
+function syncCallStateUI(active) {
+  const customerState = document.getElementById("customer-call-state");
+  const headerState = document.getElementById("header-call-state");
+  const tabCustomer = document.getElementById("tab-customer");
+  const tabDashboard = document.getElementById("tab-dashboard");
+
+  customerState.textContent = active ? "Call in progress" : "Ready to call";
+  headerState.textContent = active ? "Call active" : "No active call";
+  tabCustomer.classList.toggle("locked", active);
+  tabDashboard.classList.toggle("locked", active);
+}
+
+function setActiveView(view) {
+  if (_calling && view !== _activeView) {
+    alert("You can switch tabs after the call ends.");
+    return;
+  }
+  _activeView = view;
+
+  const customerView = document.getElementById("customer-view");
+  const dashboardView = document.getElementById("dashboard-view");
+  const tabCustomer = document.getElementById("tab-customer");
+  const tabDashboard = document.getElementById("tab-dashboard");
+
+  const customerActive = view === "customer";
+  customerView.classList.toggle("hidden", !customerActive);
+  dashboardView.classList.toggle("hidden", customerActive);
+  tabCustomer.classList.toggle("active", customerActive);
+  tabDashboard.classList.toggle("active", !customerActive);
+  tabCustomer.setAttribute("aria-selected", String(customerActive));
+  tabDashboard.setAttribute("aria-selected", String(!customerActive));
+}
+
+function setupTabs() {
+  document
+    .getElementById("tab-customer")
+    .addEventListener("click", () => setActiveView("customer"));
+  document
+    .getElementById("tab-dashboard")
+    .addEventListener("click", () => setActiveView("dashboard"));
+}
+
+function setupMicPermissionButton() {
+  const btn = document.getElementById("mic-permission-btn");
+  btn.addEventListener("click", async () => {
+    await refreshMicPermission(true);
+  });
+}
+
+// ── Loading skeletons ─────────────────────────────────────────────────────────
+function renderLoadingState() {
+  // Stats skeleton
+  const statsEl = document.getElementById("stats");
+  if (statsEl) {
+    const card = () => `
+      <div class="card">
+        <div class="skeleton" style="width:90px;height:10px"></div>
+        <div class="skeleton" style="width:120px;height:26px;margin-top:8px"></div>
+        <div class="skeleton" style="width:70px;height:10px;margin-top:8px"></div>
+      </div>`;
+    statsEl.innerHTML = [card(), card(), card(), card()].join("");
+  }
+
+  // Interactions table skeleton
+  const tbody = document.getElementById("table-body");
+  if (tbody) {
+    const row = () => `
+      <tr>
+        <td class="time-cell"><div class="skeleton" style="width:60px;height:10px"></div></td>
+        <td>
+          <div class="skeleton" style="width:120px;height:12px"></div>
+          <div class="skeleton" style="width:90px;height:10px;margin-top:4px"></div>
+        </td>
+        <td><div class="skeleton" style="width:260px;height:10px"></div></td>
+        <td><div class="skeleton" style="width:60px;height:10px"></div></td>
+        <td><div class="skeleton" style="width:80px;height:10px"></div></td>
+        <td><div class="skeleton" style="width:20px;height:20px;border-radius:999px;margin-left:2px"></div></td>
+      </tr>`;
+    tbody.innerHTML = Array.from({ length: 8 }).map(row).join("");
+  }
+
+  const last = document.getElementById("last-updated");
+  if (last) last.textContent = "Loading…";
+}
 
 // ── Dashboard data ────────────────────────────────────────────────────────────
 async function load() {
-  const dot = document.getElementById("status-dot")
+  const dot = document.getElementById("status-dot");
+  // Show loading state before fetching
+  renderLoadingState();
+  if (dot) dot.className = "status-dot";
   try {
-    const res = await fetch(`${API_BASE}/api/interactions`)
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = await res.json()
-    _lastData = data
-    render(data)
-    dot.className = "status-dot ok"
+    const res = await fetch(`${API_BASE}/api/interactions`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    _lastData = data;
+    render(data);
+    dot.className = "status-dot ok";
     document.getElementById("last-updated").textContent =
-      `Updated ${new Date().toLocaleTimeString()}`
+      `Updated ${new Date().toLocaleTimeString()}`;
   } catch (e) {
-    dot.className = "status-dot error"
-    document.getElementById("last-updated").textContent = `Error: ${e.message}`
+    dot.className = "status-dot error";
+    document.getElementById("last-updated").textContent = `Error: ${e.message}`;
+    renderCustomerView(_lastData);
     if (_lastData.length === 0) {
       document.getElementById("table-body").innerHTML =
-        `<tr><td colspan="6" class="empty">Failed to load — is the backend running?</td></tr>`
+        `<tr><td colspan="6" class="empty">Failed to load — is the backend running?</td></tr>`;
     }
   }
 }
 
-window.load = load
+window.load = load;
 
 // ── Pagination state ──────────────────────────────────────────────────────────
-const PAGE_SIZE = 10
-let _allRows = []
-let _currentPage = 1
+const PAGE_SIZE = 10;
+let _allRows = [];
+let _currentPage = 1;
 
 function render(rows) {
-  rows.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-  _allRows = rows
-  _currentPage = 1
+  rows.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  _allRows = rows;
+  _currentPage = 1;
 
-  const total      = rows.length
-  const resolved   = rows.filter(r => r.outcome === "resolved").length
-  const escalated  = rows.filter(r => r.outcome === "escalated").length
-  const authFailed = rows.filter(r => r.outcome === "auth_failed").length
-  const containment = total > 0 ? Math.round((resolved / total) * 100) : 0
+  const total = rows.length;
+  const resolved = rows.filter((r) => r.outcome === "resolved").length;
+  const escalated = rows.filter((r) => r.outcome === "escalated").length;
+  const authFailed = rows.filter((r) => r.outcome === "auth_failed").length;
+  const containment = total > 0 ? Math.round((resolved / total) * 100) : 0;
 
   const stats = [
-    { title: "Total Calls",      value: total,              sub: "all time",            bar: null },
-    { title: "Containment Rate", value: `${containment}%`,  sub: `${resolved} resolved`, bar: containment },
-    { title: "Escalated",        value: escalated,          sub: `${pct(escalated, total)}% of calls`, bar: null },
-    { title: "Auth Failures",    value: authFailed,         sub: `${rows.filter(r => r.sentiment === "positive").length} positive sentiment`, bar: null },
-  ]
+    { title: "Total Calls", value: total, sub: "all time", bar: null },
+    {
+      title: "Containment Rate",
+      value: `${containment}%`,
+      sub: `${resolved} resolved`,
+      bar: containment,
+    },
+    {
+      title: "Escalated",
+      value: escalated,
+      sub: `${pct(escalated, total)}% of calls`,
+      bar: null,
+    },
+    {
+      title: "Auth Failures",
+      value: authFailed,
+      sub: `${rows.filter((r) => r.sentiment === "positive").length} positive sentiment`,
+      bar: null,
+    },
+  ];
 
-  document.getElementById("stats").innerHTML = stats.map(c => `
+  document.getElementById("stats").innerHTML = stats
+    .map(
+      (c) => `
     <div class="card">
       <div class="card-title">${c.title}</div>
       <div class="card-value">${c.value}</div>
       <div class="card-sub">${c.sub}</div>
       ${c.bar !== null ? `<div class="card-bar"><div class="card-bar-fill" style="width:${c.bar}%"></div></div>` : ""}
     </div>
-  `).join("")
+  `,
+    )
+    .join("");
 
-  renderPage()
+  renderCustomerView(rows);
+  renderPage();
+}
+
+function renderCustomerView(rows) {
+  // Do not auto-select a caller; selection occurs during/after agent prompt
+  const selected = _selectedCallerPhone
+    ? CALLER_PROFILES[_selectedCallerPhone]
+    : null;
+  const verifyEl = document.getElementById("customer-verify");
+  const chipEl = document.getElementById("selected-caller-chip");
+  if (selected) {
+    verifyEl.textContent = `Confirm ${selected.first_name} ${selected.last_name} and DOB ${selected.dob}`;
+    chipEl.textContent = `Selected: ${selected.first_name} ${selected.last_name} (${selected.phone})`;
+    chipEl.style.display = "";
+  } else {
+    verifyEl.textContent =
+      "The agent will ask to confirm identity during the call.";
+    chipEl.style.display = "none";
+  }
+
+  const rowsHtml = Object.values(CALLER_PROFILES)
+    .map((caller) => {
+      const isActive =
+        !!_selectedCallerPhone && caller.phone === _selectedCallerPhone;
+      return `
+      <tr data-phone="${caller.phone}" class="${isActive ? "active-caller-row" : ""}">
+        <td><span class="phone-number">${caller.phone}</span></td>
+        <td>${caller.first_name}</td>
+        <td>${caller.last_name}</td>
+        <td>${caller.dob}</td>
+        <td>${caller.claim_id}</td>
+        <td>${caller.claim_status}</td>
+        <td>${caller.docs_required || "—"}</td>
+        <td>${caller.policy_number || "—"}</td>
+      </tr>
+    `;
+    })
+    .join("");
+
+  const unknownRow = `
+    <tr data-phone="+19995550000" class="${_selectedCallerPhone === "+19995550000" ? "active-caller-row" : ""}">
+      <td><span class="phone-number">+19995550000</span></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+  `;
+
+  const tbody = document.getElementById("customer-caller-body");
+  tbody.innerHTML = rowsHtml + unknownRow;
+
+  tbody.querySelectorAll("tr[data-phone]").forEach((tr) => {
+    tr.addEventListener("click", () => {
+      _selectedCallerPhone = tr.dataset.phone;
+      renderCustomerView(rows);
+    });
+  });
 }
 
 function renderPage() {
-  const rows = _allRows
-  const tbody = document.getElementById("table-body")
+  const rows = _allRows;
+  const tbody = document.getElementById("table-body");
 
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">No calls yet. Make a test call to see data here.</td></tr>`
-    document.getElementById("pagination").innerHTML = ""
-    return
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">No calls yet. Make a test call to see data here.</td></tr>`;
+    document.getElementById("pagination").innerHTML = "";
+    return;
   }
 
-  const totalPages = Math.ceil(rows.length / PAGE_SIZE)
-  const page = Math.max(1, Math.min(_currentPage, totalPages))
-  _currentPage = page
+  const totalPages = Math.ceil(rows.length / PAGE_SIZE);
+  const page = Math.max(1, Math.min(_currentPage, totalPages));
+  _currentPage = page;
 
-  const start = (page - 1) * PAGE_SIZE
-  const pageRows = rows.slice(start, start + PAGE_SIZE)
+  const start = (page - 1) * PAGE_SIZE;
+  const pageRows = rows.slice(start, start + PAGE_SIZE);
 
-  tbody.innerHTML = pageRows.map((r, i) => {
-    const globalIdx = start + i
-    const ts = formatTime(r.timestamp)
-    const playCell = r.recording_url
-      ? `<button class="row-play-btn" data-idx="${globalIdx}" aria-label="Play recording" onclick="event.stopPropagation()">
+  tbody.innerHTML = pageRows
+    .map((r, i) => {
+      const globalIdx = start + i;
+      const ts = formatTime(r.timestamp);
+      const playCell = r.recording_url
+        ? `<button class="row-play-btn" data-idx="${globalIdx}" aria-label="Play recording" onclick="event.stopPropagation()">
            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"/></svg>
          </button>`
-      : `<span class="muted">—</span>`
-    return `
+        : `<span class="muted">—</span>`;
+      return `
       <tr class="clickable-row" data-idx="${globalIdx}">
         <td class="time-cell">${ts}</td>
         <td>
@@ -381,75 +707,86 @@ function renderPage() {
         <td><span class="badge badge-${esc(r.outcome)}">${esc(r.outcome).replace("_", " ")}</span></td>
         <td>${playCell}</td>
       </tr>
-    `
-  }).join("")
+    `;
+    })
+    .join("");
 
-  tbody.querySelectorAll("tr.clickable-row").forEach(tr => {
+  tbody.querySelectorAll("tr.clickable-row").forEach((tr) => {
     tr.addEventListener("click", () => {
-      const idx = parseInt(tr.dataset.idx, 10)
-      openDrawer(rows[idx])
-    })
-  })
+      const idx = parseInt(tr.dataset.idx, 10);
+      openDrawer(rows[idx]);
+    });
+  });
 
-  tbody.querySelectorAll(".row-play-btn").forEach(btn => {
+  tbody.querySelectorAll(".row-play-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
-      e.stopPropagation()
-      const idx = parseInt(btn.dataset.idx, 10)
-      openDrawer(rows[idx], true)
-    })
-  })
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.idx, 10);
+      openDrawer(rows[idx], true);
+    });
+  });
 
-  renderPagination(page, totalPages)
+  renderPagination(page, totalPages);
 }
 
 function renderPagination(page, totalPages) {
-  const el = document.getElementById("pagination")
-  if (totalPages <= 1) { el.innerHTML = ""; return }
+  const el = document.getElementById("pagination");
+  if (totalPages <= 1) {
+    el.innerHTML = "";
+    return;
+  }
 
-  const pages = paginationPages(page, totalPages)
-  const chevL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M15 18l-6-6 6-6"/></svg>`
-  const chevR = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M9 18l6-6-6-6"/></svg>`
+  const pages = paginationPages(page, totalPages);
+  const chevL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M15 18l-6-6 6-6"/></svg>`;
+  const chevR = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M9 18l6-6-6-6"/></svg>`;
 
   el.innerHTML = [
     `<button class="pg-btn" data-pg="${page - 1}" ${page === 1 ? "disabled" : ""}>${chevL} Previous</button>`,
-    ...pages.map(p =>
+    ...pages.map((p) =>
       p === "…"
         ? `<span class="pg-dots">···</span>`
-        : `<button class="pg-btn${p === page ? " active" : ""}" data-pg="${p}">${p}</button>`
+        : `<button class="pg-btn${p === page ? " active" : ""}" data-pg="${p}">${p}</button>`,
     ),
     `<button class="pg-btn" data-pg="${page + 1}" ${page === totalPages ? "disabled" : ""}>Next ${chevR}</button>`,
-  ].join("")
+  ].join("");
 
-  el.querySelectorAll(".pg-btn[data-pg]").forEach(btn => {
+  el.querySelectorAll(".pg-btn[data-pg]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      _currentPage = parseInt(btn.dataset.pg, 10)
-      renderPage()
-      document.getElementById("interactions-table").scrollIntoView({ behavior: "smooth", block: "start" })
-    })
-  })
+      _currentPage = parseInt(btn.dataset.pg, 10);
+      renderPage();
+      document
+        .getElementById("interactions-table")
+        .scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
 }
 
 function paginationPages(current, total) {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
-  if (current <= 4) return [1, 2, 3, 4, 5, "…", total]
-  if (current >= total - 3) return [1, "…", total - 4, total - 3, total - 2, total - 1, total]
-  return [1, "…", current - 1, current, current + 1, "…", total]
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  if (current <= 4) return [1, 2, 3, 4, 5, "…", total];
+  if (current >= total - 3)
+    return [1, "…", total - 4, total - 3, total - 2, total - 1, total];
+  return [1, "…", current - 1, current, current + 1, "…", total];
 }
 
 function pct(n, total) {
-  return total > 0 ? Math.round((n / total) * 100) : 0
+  return total > 0 ? Math.round((n / total) * 100) : 0;
 }
 
 function formatTime(iso) {
   try {
-    const d = new Date(iso)
-    const today = new Date()
-    const isToday = d.toDateString() === today.toDateString()
-    if (isToday) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    return d.toLocaleDateString([], { month: "short", day: "numeric" }) + " " +
-           d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    const d = new Date(iso);
+    const today = new Date();
+    const isToday = d.toDateString() === today.toDateString();
+    if (isToday)
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return (
+      d.toLocaleDateString([], { month: "short", day: "numeric" }) +
+      " " +
+      d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    );
   } catch {
-    return iso
+    return iso;
   }
 }
 
@@ -459,8 +796,13 @@ function esc(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
+    .replace(/'/g, "&#39;");
 }
 
-load()
-document.getElementById("call-icon").innerHTML = phoneIcon()
+load();
+document.getElementById("call-icon").innerHTML = phoneIcon();
+setupTabs();
+setupMicPermissionButton();
+setActiveView("customer");
+syncCallStateUI(false);
+refreshMicPermission(false);

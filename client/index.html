@@ -1,118 +1,239 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Observe Insurance — Call Dashboard</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <div class="container">
-    <header>
-      <div class="header-left">
-        <div class="logo">OI</div>
-        <div>
-          <h1>Observe Insurance</h1>
-          <p class="subtitle">VoiceAI Claims Dashboard</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Observe Insurance — Call Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="header-left">
+          <div class="logo">OI</div>
+          <div>
+            <h1>Observe Insurance</h1>
+            <p class="subtitle">VoiceAI Claims Dashboard</p>
+          </div>
         </div>
-      </div>
-      <div class="header-right">
-        <button id="call-btn" class="btn-call" onclick="toggleCall()">
-          <span id="call-icon">📞</span> <span id="call-label">Start Call</span>
+        <div class="header-right">
+          <div id="header-call-state" class="muted">No active call</div>
+        </div>
+      </header>
+
+      <div class="view-toggle" role="tablist" aria-label="Interface mode">
+        <button
+          id="tab-customer"
+          class="tab-btn active"
+          type="button"
+          role="tab"
+          aria-selected="true"
+        >
+          Customer
+        </button>
+        <button
+          id="tab-dashboard"
+          class="tab-btn"
+          type="button"
+          role="tab"
+          aria-selected="false"
+        >
+          Dashboard
         </button>
       </div>
-    </header>
 
-    <div class="stats-grid" id="stats"></div>
-
-    <section>
-      <div class="section-header">
-        <h2>Recent Interactions</h2>
-        <div class="section-actions">
-          <div class="status-line">
-            <span id="status-dot" class="status-dot"></span>
-            <span id="last-updated" class="muted">Loading…</span>
+      <section id="customer-view" class="view-panel">
+        <div class="customer-shell">
+          <div class="customer-phone card">
+            <div class="phone-top">
+              <div class="phone-notch"></div>
+              <span id="customer-call-state" class="muted">Ready to call</span>
+            </div>
+            <div class="phone-main">
+              <div class="phone-actions">
+                <button
+                  id="call-btn"
+                  class="btn-call btn-call-customer"
+                  onclick="toggleCall()"
+                >
+                  <span id="call-icon">📞</span>
+                  <span id="call-label">Start Call</span>
+                </button>
+                <button
+                  id="mic-permission-btn"
+                  class="btn-mic-status mic-unknown"
+                  type="button"
+                >
+                  Mic: checking
+                </button>
+              </div>
+            </div>
+            <div
+              id="selected-caller-chip"
+              class="phone-selected muted"
+              style="display: none"
+            >
+              Selected: —
+            </div>
+            <div class="phone-footer muted">Observe Voice Agent</div>
           </div>
-          <button id="refresh-btn" class="btn-refresh" onclick="load()">Refresh</button>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table id="interactions-table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Caller</th>
-              <th>Summary</th>
-              <th>Sentiment</th>
-              <th>Outcome</th>
-              <th>Listen</th>
-            </tr>
-          </thead>
-          <tbody id="table-body">
-            <tr><td colspan="6" class="empty">Loading…</td></tr>
-          </tbody>
-        </table>
-        <div id="pagination" class="pagination"></div>
-      </div>
-    </section>
-  </div>
-  <!-- Detail drawer -->
-  <div id="drawer-overlay" class="drawer-overlay" onclick="closeDrawer()"></div>
-  <aside id="detail-drawer" class="detail-drawer" role="dialog" aria-modal="true" aria-label="Call Details">
-    <div class="drawer-header">
-      <div>
-        <div id="drawer-caller-name" class="drawer-caller-name"></div>
-        <div id="drawer-caller-phone" class="drawer-caller-phone"></div>
-      </div>
-      <button class="drawer-close" onclick="closeDrawer()" aria-label="Close">✕</button>
-    </div>
-    <div class="drawer-body">
-      <div class="drawer-meta">
-        <span id="drawer-time" class="drawer-meta-time"></span>
-        <span id="drawer-sentiment" class="badge"></span>
-        <span id="drawer-outcome" class="badge"></span>
-      </div>
 
-      <!-- Audio player -->
-      <div id="audio-player" class="audio-player" style="display:none">
-        <div class="ap-row ap-top">
-          <button id="ap-play" class="ap-play-btn" aria-label="Play/Pause"></button>
-          <div class="ap-progress-wrap">
-            <div id="ap-progress" class="ap-progress">
-              <div id="ap-fill" class="ap-fill"></div>
-              <div id="ap-thumb" class="ap-thumb"></div>
+          <div class="customer-details card">
+            <h2>Caller Details</h2>
+            <div class="customer-flow-hint">
+              <span class="field-label">Verify Persona</span>
+              <span id="customer-verify" class="field-value"
+                >Confirm full name and date of birth</span
+              >
+            </div>
+            <div class="customer-table-wrap">
+              <table class="customer-caller-table" id="customer-caller-table">
+                <thead>
+                  <tr>
+                    <th>Phone</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>DOB</th>
+                    <th>Claim ID</th>
+                    <th>Claim Status</th>
+                    <th>Docs Required</th>
+                    <th>Policy</th>
+                  </tr>
+                </thead>
+                <tbody id="customer-caller-body"></tbody>
+              </table>
             </div>
           </div>
-          <div class="ap-times">
-            <span id="ap-current">0:00</span>
-            <span class="ap-sep">/</span>
-            <span id="ap-duration">0:00</span>
+        </div>
+      </section>
+
+      <section id="dashboard-view" class="view-panel hidden">
+        <div class="stats-grid" id="stats"></div>
+        <div class="section-header">
+          <h2>Recent Interactions</h2>
+          <div class="section-actions">
+            <div class="status-line">
+              <span id="status-dot" class="status-dot"></span>
+              <span id="last-updated" class="muted">Loading…</span>
+            </div>
+            <button id="refresh-btn" class="btn-refresh" onclick="load()">
+              Refresh
+            </button>
           </div>
         </div>
-        <div class="ap-row ap-bottom">
-          <svg class="ap-vol-icon" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
-          <input id="ap-vol" class="ap-vol-slider" type="range" min="0" max="1" step="0.05" value="1" />
+        <div class="table-wrap">
+          <table id="interactions-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Caller</th>
+                <th>Summary</th>
+                <th>Sentiment</th>
+                <th>Outcome</th>
+                <th>Listen</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <tr>
+                <td colspan="6" class="empty">Loading…</td>
+              </tr>
+            </tbody>
+          </table>
+          <div id="pagination" class="pagination"></div>
+        </div>
+      </section>
+    </div>
+    <!-- Detail drawer -->
+    <div
+      id="drawer-overlay"
+      class="drawer-overlay"
+      onclick="closeDrawer()"
+    ></div>
+    <aside
+      id="detail-drawer"
+      class="detail-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Call Details"
+    >
+      <div class="drawer-header">
+        <div>
+          <div id="drawer-caller-name" class="drawer-caller-name"></div>
+          <div id="drawer-caller-phone" class="drawer-caller-phone"></div>
+        </div>
+        <button class="drawer-close" onclick="closeDrawer()" aria-label="Close">
+          ✕
+        </button>
+      </div>
+      <div class="drawer-body">
+        <div class="drawer-meta">
+          <span id="drawer-time" class="drawer-meta-time"></span>
+          <span id="drawer-sentiment" class="badge"></span>
+          <span id="drawer-outcome" class="badge"></span>
+        </div>
+
+        <!-- Audio player -->
+        <div id="audio-player" class="audio-player" style="display: none">
+          <div class="ap-row ap-top">
+            <button
+              id="ap-play"
+              class="ap-play-btn"
+              aria-label="Play/Pause"
+            ></button>
+            <div class="ap-progress-wrap">
+              <div id="ap-progress" class="ap-progress">
+                <div id="ap-fill" class="ap-fill"></div>
+                <div id="ap-thumb" class="ap-thumb"></div>
+              </div>
+            </div>
+            <div class="ap-times">
+              <span id="ap-current">0:00</span>
+              <span class="ap-sep">/</span>
+              <span id="ap-duration">0:00</span>
+            </div>
+          </div>
+          <div class="ap-row ap-bottom">
+            <svg
+              class="ap-vol-icon"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              width="14"
+              height="14"
+            >
+              <path
+                d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"
+              />
+            </svg>
+            <input
+              id="ap-vol"
+              class="ap-vol-slider"
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value="1"
+            />
+          </div>
+        </div>
+
+        <div class="drawer-section">
+          <div class="drawer-section-label">Summary</div>
+          <div id="drawer-summary" class="drawer-summary-text"></div>
+        </div>
+
+        <div class="drawer-section">
+          <div class="drawer-section-label">Transcript</div>
+          <div id="drawer-transcript" class="drawer-transcript"></div>
+        </div>
+
+        <div id="drawer-links-section" class="drawer-section">
+          <div class="drawer-section-label">Listen</div>
+          <div id="drawer-links" class="drawer-links"></div>
         </div>
       </div>
+    </aside>
 
-      <div class="drawer-section">
-        <div class="drawer-section-label">Summary</div>
-        <div id="drawer-summary" class="drawer-summary-text"></div>
-      </div>
-
-      <div class="drawer-section">
-        <div class="drawer-section-label">Transcript</div>
-        <div id="drawer-transcript" class="drawer-transcript"></div>
-      </div>
-
-      <div id="drawer-links-section" class="drawer-section">
-        <div class="drawer-section-label">Listen</div>
-        <div id="drawer-links" class="drawer-links"></div>
-      </div>
-    </div>
-  </aside>
-
-  <script src="constants.js"></script>
-  <script type="module" src="app.js"></script>
-</body>
+    <script src="constants.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
 </html>
