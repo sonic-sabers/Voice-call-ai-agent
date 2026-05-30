@@ -48,16 +48,18 @@ def compose_claim_response(phone: str, call_id: str) -> ClaimResponseOutput:
         )
 
     # Step 4 — compose
+    policy_suffix = f" under policy {record.policy_number}" if record.policy_number else ""
+
     if record.claim_status == "approved":
         return ClaimResponseOutput(
             safe_to_speak=True,
-            response=f"Great news — your claim {record.claim_id} has been approved.",
+            response=f"Great news — your claim {record.claim_id}{policy_suffix} has been approved.",
         )
     if record.claim_status == "pending":
         return ClaimResponseOutput(
             safe_to_speak=True,
             response=(
-                f"Your claim {record.claim_id} is currently pending. "
+                f"Your claim {record.claim_id}{policy_suffix} is currently pending. "
                 f"Standard processing takes {CLAIM_PROCESSING_DAYS}."
             ),
         )
@@ -70,7 +72,7 @@ def compose_claim_response(phone: str, call_id: str) -> ClaimResponseOutput:
     return ClaimResponseOutput(
         safe_to_speak=True,
         response=(
-            f"Your claim {record.claim_id} requires additional documentation — "
+            f"Your claim {record.claim_id}{policy_suffix} requires additional documentation — "
             f"specifically, {record.docs_required}. "
             f"You can upload it at {PORTAL_URL} or email {SUPPORT_EMAIL}."
         ),

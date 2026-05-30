@@ -10,3 +10,4 @@ class CallerRecord:
     claim_id: str
     claim_status: str
     docs_required: str
+    policy_number: str = ""

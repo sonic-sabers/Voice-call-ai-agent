@@ -90,11 +90,11 @@ python data/seed.py
 
 Demo callers:
 
-| Phone | Name | Claim | Status |
-| --- | --- | --- | --- |
-| `+14085550192` | Maya Patel | `CLM-2847` | approved |
-| `+13125550371` | Carlos Rivera | `CLM-3105` | requires documentation |
-| `+17145550884` | Amara Okonkwo | `CLM-4422` | pending |
+| Phone | Name | Claim | Status | Policy |
+| --- | --- | --- | --- | --- |
+| `+14085550192` | Maya Patel | `CLM-2847` | approved | `POL-100192` |
+| `+13125550371` | Carlos Rivera | `CLM-3105` | requires documentation | `POL-100371` |
+| `+17145550884` | Amara Okonkwo | `CLM-4422` | pending | `POL-100884` |
 
 ## Local Development
 

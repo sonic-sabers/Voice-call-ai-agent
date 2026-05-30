@@ -103,6 +103,7 @@ def lookup_caller(phone: str) -> CallerRecord | None:
                     claim_id=row[4],
                     claim_status=row[5],
                     docs_required=row[6],
+                    policy_number=row[7] if len(row) > 7 else "",
                 )
         return None
 
