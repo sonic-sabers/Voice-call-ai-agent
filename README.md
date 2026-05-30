@@ -67,8 +67,11 @@ Optional:
 AIRTABLE_API_KEY=your-airtable-api-key-here
 AIRTABLE_BASE_ID=your-airtable-base-id-here
 OPENAI_API_KEY=your-openai-api-key-here
+DASHBOARD_SECRET=your-dashboard-secret-here
 PORT=3000
 ```
+
+`DASHBOARD_SECRET` controls access to `/api/interactions`, which returns call PII (caller phone, name, summaries, recording URLs). When set, the dashboard shows a browser prompt on first load — enter the secret once and it is held in `sessionStorage` for the session. If `DASHBOARD_SECRET` is not set the endpoint is open (acceptable for local dev, not for production). If the dashboard shows "Access denied — re-enter token", the token was wrong or cleared; refresh and enter the correct value and currently not adding it in production.
 
 `GOOGLE_CREDENTIALS_JSON` should be the full service-account JSON pasted as a single line. Share the target spreadsheet with the service-account email before seeding or running the app.
 
