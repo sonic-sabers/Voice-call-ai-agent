@@ -8,6 +8,8 @@ let _lastData = []
 // ── Dashboard auth ────────────────────────────────────────────────────────────
 // Operator enters DASHBOARD_SECRET once per browser session. Never fetched from server.
 const _SESSION_KEY = "observe_dashboard_token"
+// Set to true when user explicitly cancels the prompt — stops polling until page reload.
+let _authCancelled = false
 
 function getStoredSecret() {
   return sessionStorage.getItem(_SESSION_KEY) || ""
@@ -17,7 +19,13 @@ function promptForSecret() {
   const token = window.prompt(
     "Dashboard access token required.\nEnter DASHBOARD_SECRET to continue:"
   )
-  if (token && token.trim()) {
+  if (token === null) {
+    // User clicked Cancel — stop polling to avoid repeated prompts.
+    _authCancelled = true
+    return ""
+  }
+  if (token.trim()) {
+    _authCancelled = false
     sessionStorage.setItem(_SESSION_KEY, token.trim())
     return token.trim()
   }
@@ -47,6 +55,9 @@ function stopAudio() {
 
 function initAudioPlayer(url) {
   stopAudio()
+  // Clear any previous error message before loading new audio.
+  const prevErr = document.querySelector("#audio-player .ap-error")
+  if (prevErr) prevErr.textContent = ""
   _audio = new Audio(url)
   _audio.crossOrigin = "anonymous"
 
@@ -99,7 +110,10 @@ function initAudioPlayer(url) {
   })
 
   playBtn.onclick = () => {
-    if (_audio.paused) _audio.play().catch(() => {})
+    if (_audio.paused) _audio.play().catch((err) => {
+      console.warn("audio play failed:", err)
+      showAudioError("Playback failed — recording may be unavailable or blocked by browser security.")
+    })
     else _audio.pause()
   }
 
@@ -110,9 +124,27 @@ function initAudioPlayer(url) {
     _audio.currentTime = ratio * _audio.duration
   }
 
+  _audio.addEventListener("error", () => {
+    showAudioError("Could not load recording — it may have expired or be unavailable.")
+  })
+
   volSlider.oninput = () => { if (_audio) _audio.volume = volSlider.value }
 
-  _audio.play().catch(() => {})
+  _audio.play().catch((err) => {
+    showAudioError("Playback failed — recording may be unavailable or blocked by browser security.")
+    console.warn("audio autoplay failed:", err)
+  })
+}
+
+function showAudioError(msg) {
+  const player = document.getElementById("audio-player")
+  let errEl = player.querySelector(".ap-error")
+  if (!errEl) {
+    errEl = document.createElement("div")
+    errEl.className = "ap-error"
+    player.appendChild(errEl)
+  }
+  errEl.textContent = msg
 }
 
 function playIcon() {
@@ -277,13 +309,21 @@ window.toggleCall = toggleCall
 
 // ── Dashboard data ────────────────────────────────────────────────────────────
 async function load() {
+  // Don't retry after user explicitly cancelled the auth prompt.
+  if (_authCancelled) return
   const dot = document.getElementById("status-dot")
   try {
     if (!getStoredSecret()) promptForSecret()
+    // User cancelled inside promptForSecret — bail without fetching.
+    if (_authCancelled) {
+      dot.className = "status-dot error"
+      document.getElementById("last-updated").textContent = "Auth cancelled — reload to retry"
+      return
+    }
     const res = await fetch(`${API_BASE}/api/interactions`, { headers: authHeaders() })
     if (res.status === 401) {
       clearStoredSecret()
-      document.getElementById("last-updated").textContent = "Access denied — re-enter token"
+      document.getElementById("last-updated").textContent = "Access denied — reload to re-enter token"
       dot.className = "status-dot error"
       return
     }

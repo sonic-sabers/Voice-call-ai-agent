@@ -246,6 +246,8 @@ async def handle_tool_call(request: Request) -> JSONResponse:
         return JSONResponse({"error": "Invalid JSON"}, status_code=400)
 
     msg = body.get("message", {})
+    if not isinstance(msg, dict):
+        return JSONResponse({"error": "message must be an object"}, status_code=400)
     log.debug("tool webhook body: %s", json.dumps(body)[:500])
 
     # VAPI sends all server messages to serverUrl — route end-of-call reports here too.

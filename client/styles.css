@@ -451,6 +451,13 @@ tr.clickable-row { cursor: pointer; }
   cursor: pointer;
 }
 
+.ap-error {
+  font-size: 11px;
+  color: #fca5a5;
+  text-align: center;
+  padding: 4px 0 0;
+}
+
 /* ── Loading shimmer ─────────────────────────────────────────────────────── */
 @keyframes shimmer {
   0%   { background-position: -400px 0; }

@@ -50,6 +50,9 @@ async def handle_call_end(request: Request, prefetched_body: dict | None = None)
             return JSONResponse({"error": "Invalid JSON"}, status_code=400)
 
     msg = body.get("message", {})
+    if not isinstance(msg, dict):
+        return JSONResponse({"error": "message must be an object"}, status_code=422)
+
     artifact = msg.get("artifact", {})
     call = msg.get("call", {})
 
@@ -60,9 +63,11 @@ async def handle_call_end(request: Request, prefetched_body: dict | None = None)
     call_id: str = call.get("id") or "unknown"
     session = call_session.get(call_id, {})
     pending = pending_callers.get(call_id, {})
-    # customer.number only present for PSTN calls — fall back to phone stored during lookup_caller
+    # customer.number only present for PSTN calls — fall back to phone stored during lookup_caller.
+    # customer field may be absent or null on browser/web calls.
+    customer = call.get("customer") or {}
     caller_phone: str = (
-        call.get("customer", {}).get("number")
+        (customer.get("number") if isinstance(customer, dict) else None)
         or session.get("phone")
         or pending.get("phone")
         or "unknown"

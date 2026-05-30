@@ -42,7 +42,11 @@ def _get_client() -> gspread.Client:
         raw = get_settings().google_credentials_json
         if not raw:
             raise EnvironmentError("GOOGLE_CREDENTIALS_JSON not set")
-        creds = Credentials.from_service_account_info(json.loads(raw), scopes=SCOPES)
+        try:
+            creds_dict = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise EnvironmentError("GOOGLE_CREDENTIALS_JSON is not valid JSON") from exc
+        creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
         _client = gspread.authorize(creds)
         return _client
 
