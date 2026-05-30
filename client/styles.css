@@ -219,6 +219,82 @@ h1 {
   background: #2a3140;
 }
 
+.btn-mic-icon {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid #2a3140;
+  background: #141a24;
+  color: #bdc7d6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mic-icon-wrap {
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mic-icon-wrap svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+
+.btn-mic-icon.mic-granted {
+  border-color: #274f3d;
+  background: #17271f;
+  color: #a7f3d0;
+}
+
+.btn-mic-icon.mic-prompt {
+  border-color: #5c5130;
+  background: #262117;
+  color: #fde68a;
+}
+
+.btn-mic-icon.mic-denied {
+  border-color: #5b2a2a;
+  background: #2b1717;
+  color: #fecaca;
+}
+
+.btn-mic-icon.mic-unknown {
+  border-color: #334155;
+  background: #17202d;
+  color: #cbd5e1;
+}
+
+.mic-tooltip {
+  position: absolute;
+  right: 0;
+  top: -30px;
+  white-space: nowrap;
+  border: 1px solid #313949;
+  background: #0f1520;
+  color: #d7deea;
+  font-size: 10px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity .15s ease, transform .15s ease;
+}
+
+.btn-mic-icon:hover .mic-tooltip,
+.btn-mic-icon:focus-visible .mic-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .phone-main {
   min-height: 210px;
   display: flex;
@@ -230,7 +306,8 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  width: 180px;
 }
 
 .phone-selected {
@@ -244,48 +321,27 @@ h1 {
   font-size: 10px;
 }
 
+.phone-call-state {
+  text-align: center;
+  margin-bottom: 5px;
+}
+
 .phone-footer {
   color: #9aa4b4;
   font-size: 10px;
+  margin-bottom: 2px;
 }
 
 .btn-call-customer {
-  min-width: 140px;
+  width: 100%;
 }
 
-.btn-mic-status {
-  min-height: 24px;
-  padding: 0 8px;
-  border-radius: 999px;
-  border: 1px solid #2a3140;
-  background: #121722;
-  color: #bdc7d6;
+.call-error-text {
+  min-height: 12px;
   font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-mic-status.mic-granted {
-  border-color: #1f6b48;
-  background: #0f241a;
-  color: #86efac;
-}
-
-.btn-mic-status.mic-prompt {
-  border-color: #7c5f1c;
-  background: #2c220f;
-  color: #fcd34d;
-}
-
-.btn-mic-status.mic-denied {
-  border-color: #7f1d1d;
-  background: #2b1111;
-  color: #fca5a5;
-}
-
-.btn-mic-status:disabled {
-  opacity: .55;
-  cursor: not-allowed;
+  line-height: 1.2;
+  color: #dc2626;
+  text-align: center;
 }
 
 .customer-details {
@@ -495,6 +551,14 @@ section h2 {
 .btn-call svg {
   width: 14px;
   height: 14px;
+  display: block;
+}
+
+#call-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
 .btn-call:hover {
   background: var(--primary-hover);

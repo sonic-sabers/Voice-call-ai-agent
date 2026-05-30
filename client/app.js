@@ -187,7 +187,7 @@ function phoneIcon() {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.91.33 1.8.62 2.65a2 2 0 0 1-.45 2.11L8.09 9.67a16 16 0 0 0 6.24 6.24l1.19-1.19a2 2 0 0 1 2.11-.45c.85.29 1.74.5 2.65.62A2 2 0 0 1 22 16.92z"/></svg>`;
 }
 function stopIcon() {
-  return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+  return `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>`;
 }
 
 // ── Detail drawer ─────────────────────────────────────────────────────────────
@@ -327,35 +327,55 @@ async function initVapi() {
 function micIcon() {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/><path d="M8 23h8"/></svg>`;
 }
+function micBlockedIcon() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v5"/><path d="M15 10v2a3 3 0 0 1-5.2 2.1"/><path d="M19 10v2a7 7 0 0 1-11.6 5.3"/><path d="M12 19v4"/><path d="M8 23h8"/><path d="M3 3l18 18"/></svg>`;
+}
+function micPromptIcon() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/><path d="M8 23h8"/><path d="M18 4h3"/><path d="M19.5 2.5v3"/></svg>`;
+}
+function micUnknownIcon() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v6"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></svg>`;
+}
 
 function updateMicPermissionUI() {
   const micBtn = document.getElementById("mic-permission-btn");
   const callBtn = document.getElementById("call-btn");
-  if (!micBtn || !callBtn) return;
+  const micTip = document.getElementById("mic-tooltip");
+  const micIconWrap = document.getElementById("mic-icon-wrap");
+  const callError = document.getElementById("call-error-text");
+  if (!micBtn || !callBtn || !micTip || !micIconWrap || !callError) return;
 
-  micBtn.className = "btn-mic-status";
+  micBtn.className = "btn-mic-icon";
   if (_micPermission === "granted") {
     micBtn.classList.add("mic-granted");
-    micBtn.textContent = "Mic: allowed";
+    micIconWrap.innerHTML = micIcon();
+    micTip.textContent = "Microphone allowed";
     callBtn.disabled = false;
+    callError.textContent = "";
     return;
   }
   if (_micPermission === "prompt") {
     micBtn.classList.add("mic-prompt");
-    micBtn.textContent = "Mic: tap to allow";
+    micIconWrap.innerHTML = micPromptIcon();
+    micTip.textContent = "Click to allow microphone";
     callBtn.disabled = false;
+    callError.textContent = "";
     return;
   }
   if (_micPermission === "denied") {
     micBtn.classList.add("mic-denied");
-    micBtn.textContent = "Mic: blocked";
+    micIconWrap.innerHTML = micBlockedIcon();
+    micTip.textContent = "Microphone blocked";
     callBtn.disabled = true;
+    callError.textContent = "Microphone is blocked. Enable it in browser settings.";
     return;
   }
 
   micBtn.classList.add("mic-unknown");
-  micBtn.textContent = "Mic: unavailable";
+  micIconWrap.innerHTML = micUnknownIcon();
+  micTip.textContent = "Microphone unavailable";
   callBtn.disabled = true;
+  callError.textContent = "Microphone is unavailable in this browser.";
 }
 
 async function refreshMicPermission(requestPrompt = false) {

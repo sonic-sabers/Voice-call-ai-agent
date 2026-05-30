@@ -47,7 +47,15 @@
           <div class="customer-phone card">
             <div class="phone-top">
               <div class="phone-notch"></div>
-              <span id="customer-call-state" class="muted">Ready to call</span>
+              <button
+                id="mic-permission-btn"
+                class="btn-mic-icon mic-unknown"
+                type="button"
+                aria-label="Microphone permission status"
+              >
+                <span id="mic-icon-wrap" class="mic-icon-wrap"></span>
+                <span id="mic-tooltip" class="mic-tooltip">Checking microphone</span>
+              </button>
             </div>
             <div class="phone-main">
               <div class="phone-actions">
@@ -59,13 +67,7 @@
                   <span id="call-icon">📞</span>
                   <span id="call-label">Start Call</span>
                 </button>
-                <button
-                  id="mic-permission-btn"
-                  class="btn-mic-status mic-unknown"
-                  type="button"
-                >
-                  Mic: checking
-                </button>
+                <div id="call-error-text" class="call-error-text" aria-live="polite"></div>
               </div>
             </div>
             <div
@@ -74,6 +76,9 @@
               style="display: none"
             >
               Selected: —
+            </div>
+            <div id="customer-call-state" class="phone-call-state muted">
+              Ready to call
             </div>
             <div class="phone-footer muted">Observe Voice Agent</div>
           </div>
