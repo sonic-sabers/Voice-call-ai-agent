@@ -15,18 +15,22 @@ async function initVapi() {
   if (!res.ok) throw new Error("Failed to load config")
   const { vapiPublicKey, vapiAssistantId } = await res.json()
   if (!vapiPublicKey) throw new Error("VAPI_PUBLIC_KEY not configured on server")
+
+  // Dynamic ESM import — works in all modern browsers without a bundler
+  const { default: Vapi } = await import("https://esm.sh/@vapi-ai/web@2.5.2")
   _vapi = new Vapi(vapiPublicKey)
+  _vapi._assistantId = vapiAssistantId
+
   _vapi.on("call-end", () => {
     _calling = false
     setCallBtn(false)
-    setTimeout(load, 3000)  // refresh table after call ends
+    setTimeout(load, 3000)
   })
   _vapi.on("error", (e) => {
     console.error("VAPI error", e)
     _calling = false
     setCallBtn(false)
   })
-  _vapi._assistantId = vapiAssistantId
   return _vapi
 }
 
@@ -60,6 +64,10 @@ async function toggleCall() {
   }
 }
 
+// Expose to HTML onclick (module scripts don't pollute window automatically)
+window.toggleCall = toggleCall
+
+// ── Dashboard data ────────────────────────────────────────────────────────────
 async function load() {
   const dot = document.getElementById("status-dot")
   try {
@@ -80,6 +88,8 @@ async function load() {
     }
   }
 }
+
+window.load = load
 
 function render(rows) {
   rows.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
