@@ -264,7 +264,7 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   width: 180px;
 }
 
@@ -296,52 +296,222 @@ h1 {
 }
 
 .call-error-text {
-  min-height: 12px;
+  min-height: 0;
   font-size: 10px;
-  line-height: 1.2;
+  line-height: 1.3;
   color: #dc2626;
   text-align: center;
+  display: none;
+}
+
+.call-error-text:not(:empty) {
+  display: block;
 }
 
 .btn-mic-permission {
-  margin-top: 2px;
-  border: 1px solid #334155;
-  background: #0f172a;
-  color: #e2e8f0;
+  border: none;
+  background: #09090b;
+  color: #fafafa;
   border-radius: 999px;
-  padding: 3px 10px;
-  font-size: 10px;
+  padding: 6px 14px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s;
 }
 
 .btn-mic-permission:hover {
-  background: #1e293b;
+  background: #27272a;
 }
 
 .direct-call-note {
-  margin-top: 4px;
   text-align: center;
-  font-size: 11px;
+  font-size: 10px;
   color: #8b95a8;
-  line-height: 1.4;
+  line-height: 1.5;
   background: transparent;
   border: none;
   border-radius: 0;
   padding: 0;
+  border-top: 1px solid #e4e4e7;
+  padding-top: 8px;
+  width: 100%;
 }
 
 .direct-call-link {
   display: inline-block;
-  margin-top: 2px;
-  color: #1f3b8f;
+  color: #2563eb;
   text-decoration: underline;
   text-underline-offset: 2px;
   font-weight: 600;
 }
 
 .direct-call-link:hover {
-  color: #172554;
+  color: #1d4ed8;
+}
+
+/* ── Mic permission modal ─────────────────────────────────────────────────── */
+.mic-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 9, 11, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.mic-modal-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mic-modal {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(9, 9, 11, 0.18);
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transform: translateY(8px) scale(0.98);
+  transition: transform 0.2s;
+}
+
+.mic-modal-overlay.open .mic-modal {
+  transform: translateY(0) scale(1);
+}
+
+.mic-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.mic-modal-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mic-modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #09090b;
+  line-height: 1.2;
+  margin-bottom: 3px;
+}
+
+.mic-modal-subtitle {
+  font-size: 12px;
+  color: #71717a;
+}
+
+.mic-modal-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #a1a1aa;
+  padding: 2px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.mic-modal-close:hover {
+  color: #09090b;
+}
+
+.mic-modal-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+}
+
+.mic-modal-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: #3f3f46;
+  line-height: 1.4;
+}
+
+.mic-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #09090b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.mic-step-detail {
+  color: #71717a;
+  font-size: 12px;
+}
+
+.mic-modal-footer {
+  display: flex;
+  gap: 8px;
+}
+
+.mic-modal-reload {
+  flex: 1;
+  background: #09090b;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 0;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.mic-modal-reload:hover {
+  background: #27272a;
+}
+
+.mic-modal-cancel {
+  flex: 1;
+  background: #f4f4f5;
+  color: #09090b;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 0;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.mic-modal-cancel:hover {
+  background: #e4e4e7;
 }
 
 .customer-details {

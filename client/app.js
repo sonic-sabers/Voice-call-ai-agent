@@ -341,28 +341,29 @@ async function initVapi() {
   return _vapi;
 }
 
+function openMicModal() {
+  const overlay = document.getElementById("mic-modal-overlay");
+  if (!overlay) return;
+  overlay.classList.add("open");
+  overlay.setAttribute("aria-hidden", "false");
+}
+
+window.closeMicModal = function () {
+  const overlay = document.getElementById("mic-modal-overlay");
+  if (!overlay) return;
+  overlay.classList.remove("open");
+  overlay.setAttribute("aria-hidden", "true");
+};
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") window.closeMicModal();
+});
+
 function updateMicPermissionUI() {
-  const callBtn = document.getElementById("call-btn");
-  const callError = document.getElementById("call-error-text");
   const micPermissionBtn = document.getElementById("mic-permission-btn");
-  if (!callBtn || !callError || !micPermissionBtn) return;
-
-  if (_micPermission === "granted" || _micPermission === "prompt") {
-    callBtn.disabled = false;
-    callError.textContent = "";
-    micPermissionBtn.style.display = "none";
-    return;
-  }
-  if (_micPermission === "denied") {
-    callBtn.disabled = true;
-    callError.textContent = "Microphone is blocked. Enable it in browser settings.";
-    micPermissionBtn.style.display = "inline-flex";
-    return;
-  }
-
-  callBtn.disabled = true;
-  callError.textContent = "Microphone is unavailable in this browser.";
-  micPermissionBtn.style.display = "none";
+  if (!micPermissionBtn) return;
+  // Only show "Enable Microphone" button after a denied check — never block Start Call
+  micPermissionBtn.style.display = _micPermission === "denied" ? "inline-flex" : "none";
 }
 
 async function refreshMicPermission(requestPrompt = false) {
@@ -409,11 +410,7 @@ function setCallBtn(active) {
   btn.classList.toggle("active", active);
   label.textContent = active ? "End Call" : "Start Call";
   icon.innerHTML = active ? stopIcon() : phoneIcon();
-  if (!active) {
-    btn.disabled = _micPermission === "denied" || _micPermission === "unavailable";
-  } else {
-    btn.disabled = false;
-  }
+  btn.disabled = false;
   syncCallStateUI(active);
 }
 
@@ -422,7 +419,7 @@ async function toggleCall() {
   if (!_calling) {
     const permission = await refreshMicPermission(true);
     if (permission !== "granted") {
-      alert("Microphone access is required to start a call. Please allow mic access in your browser.");
+      openMicModal();
       setCallBtn(false);
       return;
     }
@@ -440,7 +437,8 @@ async function toggleCall() {
       setCallBtn(true);
     }
   } catch (e) {
-    alert("Could not start call: " + e.message);
+    const callError = document.getElementById("call-error-text");
+    if (callError) callError.textContent = e.message || "Could not start call.";
     setCallBtn(false);
   }
 }
@@ -448,13 +446,20 @@ async function toggleCall() {
 // Expose to HTML onclick (module scripts don't pollute window automatically)
 window.toggleCall = toggleCall;
 window.requestMicPermission = async function requestMicPermission() {
-  const permission = await refreshMicPermission(true);
-  if (permission === "granted") {
+  // First query current permission state without prompting
+  await refreshMicPermission(false);
+
+  if (_micPermission === "denied") {
+    // Already blocked — skip getUserMedia (it'll just fail), show instructions
+    openMicModal();
     return;
   }
-  alert(
-    "Microphone is still blocked. Click the site settings icon in your browser address bar and allow Microphone for this site, then try again."
-  );
+
+  // State is "prompt" or "unknown" — trigger native browser dialog
+  const permission = await refreshMicPermission(true);
+  if (permission !== "granted") {
+    openMicModal();
+  }
 };
 
 function syncCallStateUI(active) {
@@ -968,4 +973,3 @@ setupTabs();
 setupTalkGuideAccordion();
 setActiveView("customer");
 syncCallStateUI(false);
-refreshMicPermission(false);

@@ -73,6 +73,10 @@
                   onclick="requestMicPermission()"
                   style="display: none"
                 >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
+                    <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  </svg>
                   Enable Microphone
                 </button>
                 <div class="direct-call-note">
@@ -317,6 +321,55 @@ Aria: "Of course. I'll schedule a callback from a representative."</pre>
         </div>
       </div>
     </aside>
+
+    <!-- Mic permission modal -->
+    <div id="mic-modal-overlay" class="mic-modal-overlay" aria-hidden="true" onclick="if(event.target===this)closeMicModal()">
+      <div class="mic-modal" role="dialog" aria-modal="true" aria-labelledby="mic-modal-title">
+        <div class="mic-modal-header">
+          <div class="mic-modal-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+              <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </div>
+          <div>
+            <h2 id="mic-modal-title" class="mic-modal-title">Microphone Access Blocked</h2>
+            <p class="mic-modal-subtitle">Follow these steps to enable it</p>
+          </div>
+          <button class="mic-modal-close" onclick="closeMicModal()" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <ol class="mic-modal-steps">
+          <li>
+            <span class="mic-step-num">1</span>
+            <div>
+              <strong>Click the icon</strong> <span class="mic-step-detail">at the left of the address bar — lock icon on HTTPS, or the <em>ⓘ</em> info icon on HTTP</span>
+            </div>
+          </li>
+          <li>
+            <span class="mic-step-num">2</span>
+            <div>
+              <strong>Find "Microphone"</strong> <span class="mic-step-detail">in the dropdown — toggle it to <em>Allow</em>, or click "Reset permission" then allow when prompted</span>
+            </div>
+          </li>
+          <li>
+            <span class="mic-step-num">3</span>
+            <div>
+              <strong>Reload this page</strong> <span class="mic-step-detail">and click "Enable Microphone" again</span>
+            </div>
+          </li>
+        </ol>
+        <div class="mic-modal-footer">
+          <button class="mic-modal-reload" onclick="location.reload()">Reload Page</button>
+          <button class="mic-modal-cancel" onclick="closeMicModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
 
     <script src="constants.js"></script>
     <script type="module" src="app.js"></script>
