@@ -11,12 +11,15 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/webhook/tool")
+@router.post("/webhook/tool-calls")
+@router.post("/webhook/tool_calls")
 @limiter.limit(RATE_LIMIT_TOOL_WEBHOOK)
 async def webhook_tool(request: Request):  # type: ignore[return]
     return await handle_tool_call(request)
 
 
 @router.post("/webhook/call-end")
+@router.post("/webhook/end-of-call-report")
 @limiter.limit(RATE_LIMIT_CALL_END_WEBHOOK)
 async def webhook_call_end(request: Request):  # type: ignore[return]
     return await handle_call_end(request)
