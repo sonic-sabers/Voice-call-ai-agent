@@ -66,6 +66,15 @@
                   <span id="call-label">Start Call</span>
                 </button>
                 <div id="call-error-text" class="call-error-text" aria-live="polite"></div>
+                <button
+                  id="mic-permission-btn"
+                  class="btn-mic-permission"
+                  type="button"
+                  onclick="requestMicPermission()"
+                  style="display: none"
+                >
+                  Enable Microphone
+                </button>
                 <div class="direct-call-note">
                   Or call Observe Insurance directly:
                   <a href="tel:+13072180062" class="direct-call-link">+1 (307) 218-0062</a>

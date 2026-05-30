@@ -344,21 +344,25 @@ async function initVapi() {
 function updateMicPermissionUI() {
   const callBtn = document.getElementById("call-btn");
   const callError = document.getElementById("call-error-text");
-  if (!callBtn || !callError) return;
+  const micPermissionBtn = document.getElementById("mic-permission-btn");
+  if (!callBtn || !callError || !micPermissionBtn) return;
 
   if (_micPermission === "granted" || _micPermission === "prompt") {
     callBtn.disabled = false;
     callError.textContent = "";
+    micPermissionBtn.style.display = "none";
     return;
   }
   if (_micPermission === "denied") {
     callBtn.disabled = true;
     callError.textContent = "Microphone is blocked. Enable it in browser settings.";
+    micPermissionBtn.style.display = "inline-flex";
     return;
   }
 
   callBtn.disabled = true;
   callError.textContent = "Microphone is unavailable in this browser.";
+  micPermissionBtn.style.display = "none";
 }
 
 async function refreshMicPermission(requestPrompt = false) {
@@ -443,6 +447,15 @@ async function toggleCall() {
 
 // Expose to HTML onclick (module scripts don't pollute window automatically)
 window.toggleCall = toggleCall;
+window.requestMicPermission = async function requestMicPermission() {
+  const permission = await refreshMicPermission(true);
+  if (permission === "granted") {
+    return;
+  }
+  alert(
+    "Microphone is still blocked. Click the site settings icon in your browser address bar and allow Microphone for this site, then try again."
+  );
+};
 
 function syncCallStateUI(active) {
   const customerState = document.getElementById("customer-call-state");

@@ -303,6 +303,22 @@ h1 {
   text-align: center;
 }
 
+.btn-mic-permission {
+  margin-top: 2px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-mic-permission:hover {
+  background: #1e293b;
+}
+
 .direct-call-note {
   margin-top: 4px;
   text-align: center;
