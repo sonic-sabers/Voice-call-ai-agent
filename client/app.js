@@ -125,6 +125,12 @@ function playIcon() {
 function pauseIcon() {
   return `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`
 }
+function phoneIcon() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.91.33 1.8.62 2.65a2 2 0 0 1-.45 2.11L8.09 9.67a16 16 0 0 0 6.24 6.24l1.19-1.19a2 2 0 0 1 2.11-.45c.85.29 1.74.5 2.65.62A2 2 0 0 1 22 16.92z"/></svg>`
+}
+function stopIcon() {
+  return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`
+}
 
 // ── Detail drawer ─────────────────────────────────────────────────────────────
 function openDrawer(row, autoPlay = false) {
@@ -252,7 +258,7 @@ function setCallBtn(active) {
   const icon = document.getElementById("call-icon")
   btn.classList.toggle("active", active)
   label.textContent = active ? "End Call" : "Start Call"
-  icon.textContent = active ? "⏹" : "📞"
+  icon.innerHTML = active ? stopIcon() : phoneIcon()
   btn.disabled = false
 }
 
@@ -290,7 +296,7 @@ async function load() {
     render(data)
     dot.className = "status-dot ok"
     document.getElementById("last-updated").textContent =
-      `Updated ${new Date().toLocaleTimeString()} · ${C.REFRESH_LABEL}`
+      `Updated ${new Date().toLocaleTimeString()}`
   } catch (e) {
     dot.className = "status-dot error"
     document.getElementById("last-updated").textContent = `Error: ${e.message}`
@@ -457,4 +463,4 @@ function esc(s) {
 }
 
 load()
-setInterval(load, C.POLL_INTERVAL_MS)
+document.getElementById("call-icon").innerHTML = phoneIcon()

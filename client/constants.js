@@ -9,13 +9,9 @@ const C = {
   /** Dev server port — must match server DEFAULT_PORT */
   DEV_PORT: 3000,
 
-  /** How often to auto-refresh the interactions table (ms) */
-  POLL_INTERVAL_MS: 30_000,
-
   // ── Dashboard copy ─────────────────────────────────────────────────────────
   BRAND_NAME: "Observe Insurance",
   DASHBOARD_TITLE: "VoiceAI Claims Dashboard",
-  REFRESH_LABEL: "auto-refresh 30s",
 
   // ── Outcome / sentiment values (must match server derive_outcome output) ───
   OUTCOMES: Object.freeze(["resolved", "escalated", "auth_failed"]),

@@ -20,8 +20,6 @@
         <button id="call-btn" class="btn-call" onclick="toggleCall()">
           <span id="call-icon">📞</span> <span id="call-label">Start Call</span>
         </button>
-        <span id="status-dot" class="status-dot"></span>
-        <span id="last-updated" class="muted">Loading…</span>
       </div>
     </header>
 
@@ -30,7 +28,13 @@
     <section>
       <div class="section-header">
         <h2>Recent Interactions</h2>
-        <button id="refresh-btn" class="btn-refresh" onclick="load()">Refresh</button>
+        <div class="section-actions">
+          <div class="status-line">
+            <span id="status-dot" class="status-dot"></span>
+            <span id="last-updated" class="muted">Loading…</span>
+          </div>
+          <button id="refresh-btn" class="btn-refresh" onclick="load()">Refresh</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table id="interactions-table">
