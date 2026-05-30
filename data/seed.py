@@ -17,9 +17,9 @@ from server.core.constants import SHEET_TAB_CALLERS, SHEET_TAB_INTERACTIONS
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 CALLERS = [
-    ["+14085550192", "Maya", "Patel", "1987-09-14", "CLM-2847", "approved", "", "POL-100192"],
-    ["+13125550371", "Carlos", "Rivera", "1992-04-03", "CLM-3105", "requires_documentation", "radiology report and treating physician statement", "POL-100371"],
-    ["+17145550884", "Amara", "Okonkwo", "1979-11-28", "CLM-4422", "pending", "", "POL-100884"],
+    ["+1-408-555-0192", "Maya", "Patel", "1987-09-14", "CLM-2847", "approved", "", "POL-100192"],
+    ["+1-312-555-0371", "Carlos", "Rivera", "1992-04-03", "CLM-3105", "requires_documentation", "radiology report and treating physician statement", "POL-100371"],
+    ["+1-714-555-0884", "Amara", "Okonkwo", "1979-11-28", "CLM-4422", "pending", "", "POL-100884"],
 ]
 
 CALLERS_HEADER = ["phone", "first_name", "last_name", "dob", "claim_id", "claim_status", "docs_required", "policy_number"]

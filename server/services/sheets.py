@@ -34,6 +34,16 @@ _client_lock = threading.Lock()
 _client: gspread.Client | None = None
 
 
+def _normalize_phone(phone: str) -> str:
+    """Normalize phone to +<digits> for robust matching."""
+    digits = "".join(ch for ch in str(phone or "") if ch.isdigit())
+    if not digits:
+        return ""
+    if len(digits) == 10:
+        digits = f"1{digits}"
+    return f"+{digits}"
+
+
 def _get_client() -> gspread.Client:
     global _client
     with _client_lock:
@@ -86,7 +96,8 @@ def _with_retry(fn, label: str):
 @lru_cache(maxsize=CALLER_CACHE_MAXSIZE)
 def lookup_caller(phone: str) -> CallerRecord | None:
     """Look up caller by E.164 phone from 'callers' sheet. LRU-cached per process."""
-    if not phone:
+    normalized_phone = _normalize_phone(phone)
+    if not normalized_phone:
         return None
 
     def _fetch():
@@ -94,7 +105,7 @@ def lookup_caller(phone: str) -> CallerRecord | None:
         for row in rows[1:]:
             if len(row) < 7:
                 continue
-            if row[0] == phone:
+            if _normalize_phone(row[0]) == normalized_phone:
                 return CallerRecord(
                     phone=row[0],
                     first_name=row[1],

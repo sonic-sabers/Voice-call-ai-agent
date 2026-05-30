@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Observe Insurance — Call Dashboard</title>
+    <title>Observe Insurance - Call Dashboard</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -47,15 +47,7 @@
           <div class="customer-phone card">
             <div class="phone-top">
               <div class="phone-notch"></div>
-              <button
-                id="mic-permission-btn"
-                class="btn-mic-icon mic-unknown"
-                type="button"
-                aria-label="Microphone permission status"
-              >
-                <span id="mic-icon-wrap" class="mic-icon-wrap"></span>
-                <span id="mic-tooltip" class="mic-tooltip">Checking microphone</span>
-              </button>
+              <div id="phone-top-status" class="phone-top-status muted">Ready to call</div>
             </div>
             <div class="phone-main">
               <div class="phone-actions">
@@ -68,6 +60,10 @@
                   <span id="call-label">Start Call</span>
                 </button>
                 <div id="call-error-text" class="call-error-text" aria-live="polite"></div>
+                <div class="direct-call-note">
+                  Or call Observe Insurance directly:
+                  <a href="tel:+13072180062" class="direct-call-link">+1 (307) 218-0062</a>
+                </div>
               </div>
             </div>
             <div
@@ -75,10 +71,7 @@
               class="phone-selected muted"
               style="display: none"
             >
-              Selected: —
-            </div>
-            <div id="customer-call-state" class="phone-call-state muted">
-              Ready to call
+              Selected: Not available
             </div>
             <div class="phone-footer muted">Observe Voice Agent</div>
           </div>
@@ -108,6 +101,75 @@
                 <tbody id="customer-caller-body"></tbody>
               </table>
             </div>
+            <div class="talk-guide">
+              <div class="talk-guide-title">What to talk?</div>
+              <div class="talk-guide-sub muted">Noting in mind, here’s the sample conversation.</div>
+
+              <details class="talk-item">
+                <summary>1. Maya Patel - +1 408-555-0192 - approved (happy path)</summary>
+                <div class="talk-content">
+                  <pre>Phone: +1 408-555-0192
+
+Aria: "Thank you for calling Observe Insurance. I'm Aria, your AI claims assistant.
+This call may be recorded for quality purposes. Is that okay?"
+Caller: "Sure, that's fine."
+Aria: "May I have the phone number on your account?"
+Caller: "408-555-0192"
+Aria: "Am I speaking with Maya Patel?"
+Caller: "Yes, that's me."
+Aria: "Great news - your claim CLM-2847 has been approved."
+Caller: "How long does payment take?"
+Aria: "Standard claims resolve within 5 to 7 business days."</pre>
+                </div>
+              </details>
+
+              <details class="talk-item">
+                <summary>2. Carlos Rivera - +1 312-555-0371 - documentation required</summary>
+                <div class="talk-content">
+                  <pre>Phone: +1 312-555-0371
+
+Aria: "Am I speaking with Carlos Rivera?"
+Caller: "Yes."
+Aria: "Your claim CLM-3105 requires additional documentation."
+Aria: "Specifically, radiology report and treating physician statement."</pre>
+                </div>
+              </details>
+
+              <details class="talk-item">
+                <summary>3. Unknown caller - +1 999-555-0000 (error path)</summary>
+                <div class="talk-content">
+                  <pre>Phone: +1 999-555-0000
+
+Aria: "I wasn't able to locate an account with that number."
+Aria: "A representative will follow up within one business day."</pre>
+                </div>
+              </details>
+
+              <details class="talk-item">
+                <summary>4. Identity denied - +1 714-555-0884 - DOB fails (Amara)</summary>
+                <div class="talk-content">
+                  <pre>Phone: +1 714-555-0884
+
+Aria: "Am I speaking with Amara Okonkwo?"
+Caller: "This is her husband."
+Aria: "For security, I'll need to verify the date of birth on the account."
+Caller: "March 15th, 1979."
+Aria: "I'm sorry - I'm unable to verify that information."
+Aria: "A representative will follow up shortly."</pre>
+                </div>
+              </details>
+
+              <details class="talk-item">
+                <summary>5. Representative escalation - +1 408-555-0192 (required flow)</summary>
+                <div class="talk-content">
+                  <pre>Phone: +1 408-555-0192
+
+Aria: "Great news - your claim CLM-2847 has been approved. Is there anything else?"
+Caller: "I want to speak to a real person about this."
+Aria: "Of course. I'll schedule a callback from a representative."</pre>
+                </div>
+              </details>
+            </div>
           </div>
         </div>
       </section>
@@ -117,9 +179,12 @@
         <div class="section-header">
           <h2>Recent Interactions</h2>
           <div class="section-actions">
-            <div class="status-line">
-              <span id="status-dot" class="status-dot"></span>
-              <span id="last-updated" class="muted">Loading…</span>
+            <div class="status-meta">
+              <div class="status-line">
+                <span id="status-dot" class="status-dot"></span>
+                <span id="last-updated" class="muted">Loading…</span>
+              </div>
+              <div class="sync-hint muted">It takes up to 10 sec to sync recent calls.</div>
             </div>
             <button id="refresh-btn" class="btn-refresh" onclick="load()">
               Refresh

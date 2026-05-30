@@ -8,6 +8,23 @@ const API_BASE =
 let _lastData = [];
 let _activeView = "customer";
 let _selectedCallerPhone = null;
+const UNKNOWN_CALLER_PHONE = "+19995550000";
+
+function normalizePhone(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length === 10) return `+1${digits}`;
+  return `+${digits}`;
+}
+
+function formatPhone(phone) {
+  const normalized = normalizePhone(phone);
+  const digits = normalized.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 ${digits.slice(1, 4)}-${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return normalized || "Not available";
+}
 
 const CALLER_PROFILES = {
   "+14085550192": {
@@ -17,7 +34,7 @@ const CALLER_PROFILES = {
     dob: "1987-09-14",
     claim_id: "CLM-2847",
     claim_status: "approved",
-    docs_required: "—",
+    docs_required: "Not available",
     policy_number: "POL-100192",
   },
   "+13125550371": {
@@ -37,7 +54,7 @@ const CALLER_PROFILES = {
     dob: "1979-11-28",
     claim_id: "CLM-4422",
     claim_status: "pending",
-    docs_required: "—",
+    docs_required: "Not available",
     policy_number: "POL-100884",
   },
 };
@@ -195,7 +212,7 @@ function openDrawer(row, autoPlay = false) {
   document.getElementById("drawer-caller-name").textContent =
     row.caller_name || "Unknown";
   document.getElementById("drawer-caller-phone").textContent =
-    row.caller_phone || "—";
+    row.caller_phone || "Not available";
   document.getElementById("drawer-time").textContent = formatTime(
     row.timestamp,
   );
@@ -324,56 +341,22 @@ async function initVapi() {
   return _vapi;
 }
 
-function micIcon() {
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/><path d="M8 23h8"/></svg>`;
-}
-function micBlockedIcon() {
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v5"/><path d="M15 10v2a3 3 0 0 1-5.2 2.1"/><path d="M19 10v2a7 7 0 0 1-11.6 5.3"/><path d="M12 19v4"/><path d="M8 23h8"/><path d="M3 3l18 18"/></svg>`;
-}
-function micPromptIcon() {
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/><path d="M8 23h8"/><path d="M18 4h3"/><path d="M19.5 2.5v3"/></svg>`;
-}
-function micUnknownIcon() {
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v6"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></svg>`;
-}
-
 function updateMicPermissionUI() {
-  const micBtn = document.getElementById("mic-permission-btn");
   const callBtn = document.getElementById("call-btn");
-  const micTip = document.getElementById("mic-tooltip");
-  const micIconWrap = document.getElementById("mic-icon-wrap");
   const callError = document.getElementById("call-error-text");
-  if (!micBtn || !callBtn || !micTip || !micIconWrap || !callError) return;
+  if (!callBtn || !callError) return;
 
-  micBtn.className = "btn-mic-icon";
-  if (_micPermission === "granted") {
-    micBtn.classList.add("mic-granted");
-    micIconWrap.innerHTML = micIcon();
-    micTip.textContent = "Microphone allowed";
-    callBtn.disabled = false;
-    callError.textContent = "";
-    return;
-  }
-  if (_micPermission === "prompt") {
-    micBtn.classList.add("mic-prompt");
-    micIconWrap.innerHTML = micPromptIcon();
-    micTip.textContent = "Click to allow microphone";
+  if (_micPermission === "granted" || _micPermission === "prompt") {
     callBtn.disabled = false;
     callError.textContent = "";
     return;
   }
   if (_micPermission === "denied") {
-    micBtn.classList.add("mic-denied");
-    micIconWrap.innerHTML = micBlockedIcon();
-    micTip.textContent = "Microphone blocked";
     callBtn.disabled = true;
     callError.textContent = "Microphone is blocked. Enable it in browser settings.";
     return;
   }
 
-  micBtn.classList.add("mic-unknown");
-  micIconWrap.innerHTML = micUnknownIcon();
-  micTip.textContent = "Microphone unavailable";
   callBtn.disabled = true;
   callError.textContent = "Microphone is unavailable in this browser.";
 }
@@ -463,11 +446,17 @@ window.toggleCall = toggleCall;
 
 function syncCallStateUI(active) {
   const customerState = document.getElementById("customer-call-state");
+  const phoneTopStatus = document.getElementById("phone-top-status");
   const headerState = document.getElementById("header-call-state");
   const tabCustomer = document.getElementById("tab-customer");
   const tabDashboard = document.getElementById("tab-dashboard");
 
-  customerState.textContent = active ? "Call in progress" : "Ready to call";
+  if (customerState) {
+    customerState.textContent = active ? "Call in progress" : "Ready to call";
+  }
+  if (phoneTopStatus) {
+    phoneTopStatus.textContent = active ? "Call in progress" : "Ready to call";
+  }
   headerState.textContent = active ? "Call active" : "No active call";
   tabCustomer.classList.toggle("locked", active);
   tabDashboard.classList.toggle("locked", active);
@@ -503,11 +492,79 @@ function setupTabs() {
     .addEventListener("click", () => setActiveView("dashboard"));
 }
 
-function setupMicPermissionButton() {
-  const btn = document.getElementById("mic-permission-btn");
-  btn.addEventListener("click", async () => {
-    await refreshMicPermission(true);
+function setupTalkGuideAccordion() {
+  const items = document.querySelectorAll(".talk-item");
+  const getContent = (item) => item.querySelector(".talk-content");
+
+  function animateOpen(item) {
+    const content = getContent(item);
+    if (!content) return;
+    item.open = true;
+    content.style.maxHeight = "0px";
+    content.style.opacity = "0";
+    requestAnimationFrame(() => {
+      content.style.maxHeight = `${content.scrollHeight}px`;
+      content.style.opacity = "1";
+    });
+  }
+
+  function animateClose(item) {
+    const content = getContent(item);
+    if (!content || !item.open) return;
+    content.style.maxHeight = `${content.scrollHeight}px`;
+    content.style.opacity = "1";
+    requestAnimationFrame(() => {
+      content.style.maxHeight = "0px";
+      content.style.opacity = "0";
+    });
+    const done = () => {
+      item.open = false;
+    };
+    content.addEventListener("transitionend", done, { once: true });
+  }
+
+  items.forEach((item) => {
+    const summary = item.querySelector("summary");
+    const content = getContent(item);
+    if (!summary || !content) return;
+    item.open = false;
+    content.style.maxHeight = "0px";
+    content.style.opacity = "0";
+
+    summary.addEventListener("click", (e) => {
+      e.preventDefault();
+      const isOpen = item.open;
+      if (isOpen) {
+        animateClose(item);
+        return;
+      }
+      items.forEach((other) => {
+        if (other !== item) animateClose(other);
+      });
+      animateOpen(item);
+    });
   });
+}
+
+function renderCustomerLoadingState() {
+  const verifyEl = document.getElementById("customer-verify");
+  const tbody = document.getElementById("customer-caller-body");
+  if (!verifyEl || !tbody) return;
+
+  verifyEl.textContent = "Loading caller details...";
+  const row = () => `
+    <tr>
+      <td><div class="skeleton" style="width:118px;height:12px"></div></td>
+      <td><div class="skeleton" style="width:72px;height:12px"></div></td>
+      <td><div class="skeleton" style="width:76px;height:12px"></div></td>
+      <td><div class="skeleton" style="width:84px;height:12px"></div></td>
+      <td><div class="skeleton" style="width:84px;height:12px"></div></td>
+      <td><div class="skeleton" style="width:124px;height:12px"></div></td>
+      <td><div class="skeleton" style="width:92px;height:12px"></div></td>
+      <td><div class="skeleton" style="width:94px;height:12px"></div></td>
+    </tr>
+  `;
+  tbody.innerHTML = Array.from({ length: 4 }).map(row).join("");
 }
 
 // ── Loading skeletons ─────────────────────────────────────────────────────────
@@ -541,6 +598,8 @@ function renderLoadingState() {
       </tr>`;
     tbody.innerHTML = Array.from({ length: 8 }).map(row).join("");
   }
+
+  renderCustomerLoadingState();
 
   const last = document.getElementById("last-updated");
   if (last) last.textContent = "Loading…";
@@ -632,13 +691,13 @@ function render(rows) {
 function renderCustomerView(rows) {
   // Do not auto-select a caller; selection occurs during/after agent prompt
   const selected = _selectedCallerPhone
-    ? CALLER_PROFILES[_selectedCallerPhone]
+    ? CALLER_PROFILES[normalizePhone(_selectedCallerPhone)] || null
     : null;
   const verifyEl = document.getElementById("customer-verify");
   const chipEl = document.getElementById("selected-caller-chip");
   if (selected) {
     verifyEl.textContent = `Confirm ${selected.first_name} ${selected.last_name} and DOB ${selected.dob}`;
-    chipEl.textContent = `Selected: ${selected.first_name} ${selected.last_name} (${selected.phone})`;
+    chipEl.textContent = `Selected: ${selected.first_name} ${selected.last_name} (${formatPhone(selected.phone)})`;
     chipEl.style.display = "";
   } else {
     verifyEl.textContent =
@@ -648,45 +707,37 @@ function renderCustomerView(rows) {
 
   const rowsHtml = Object.values(CALLER_PROFILES)
     .map((caller) => {
-      const isActive =
-        !!_selectedCallerPhone && caller.phone === _selectedCallerPhone;
+      const displayPhone = formatPhone(caller.phone);
       return `
-      <tr data-phone="${caller.phone}" class="${isActive ? "active-caller-row" : ""}">
-        <td><span class="phone-number">${caller.phone}</span></td>
+      <tr>
+        <td class="phone-cell"><span class="phone-number">${displayPhone}</span></td>
         <td>${caller.first_name}</td>
         <td>${caller.last_name}</td>
         <td>${caller.dob}</td>
         <td>${caller.claim_id}</td>
         <td>${caller.claim_status}</td>
-        <td>${caller.docs_required || "—"}</td>
-        <td>${caller.policy_number || "—"}</td>
+        <td>${caller.docs_required || "Not available"}</td>
+        <td>${caller.policy_number || "Not available"}</td>
       </tr>
     `;
     })
     .join("");
 
   const unknownRow = `
-    <tr data-phone="+19995550000" class="${_selectedCallerPhone === "+19995550000" ? "active-caller-row" : ""}">
-      <td><span class="phone-number">+19995550000</span></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+    <tr>
+      <td class="phone-cell"><span class="phone-number">${formatPhone(UNKNOWN_CALLER_PHONE)}</span></td>
+      <td>Not available</td>
+      <td>Not available</td>
+      <td>Not available</td>
+      <td>Not available</td>
+      <td>Not available</td>
+      <td>Not available</td>
+      <td>Not available</td>
     </tr>
   `;
 
   const tbody = document.getElementById("customer-caller-body");
   tbody.innerHTML = rowsHtml + unknownRow;
-
-  tbody.querySelectorAll("tr[data-phone]").forEach((tr) => {
-    tr.addEventListener("click", () => {
-      _selectedCallerPhone = tr.dataset.phone;
-      renderCustomerView(rows);
-    });
-  });
 }
 
 function renderPage() {
@@ -714,7 +765,7 @@ function renderPage() {
         ? `<button class="row-play-btn" data-idx="${globalIdx}" aria-label="Play recording" onclick="event.stopPropagation()">
            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"/></svg>
          </button>`
-        : `<span class="muted">—</span>`;
+        : `<span class="muted">Not available</span>`;
       return `
       <tr class="clickable-row" data-idx="${globalIdx}">
         <td class="time-cell">${ts}</td>
@@ -822,7 +873,7 @@ function esc(s) {
 load();
 document.getElementById("call-icon").innerHTML = phoneIcon();
 setupTabs();
-setupMicPermissionButton();
+setupTalkGuideAccordion();
 setActiveView("customer");
 syncCallStateUI(false);
 refreshMicPermission(false);
