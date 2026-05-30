@@ -5,6 +5,60 @@ const API_BASE = window.location.hostname === "localhost" || window.location.hos
 
 let _lastData = []
 
+// ── Detail drawer ─────────────────────────────────────────────────────────────
+function openDrawer(row) {
+  document.getElementById("drawer-caller-name").textContent = row.caller_name || "Unknown"
+  document.getElementById("drawer-caller-phone").textContent = row.caller_phone || "—"
+  document.getElementById("drawer-time").textContent = formatTime(row.timestamp)
+
+  const sentimentEl = document.getElementById("drawer-sentiment")
+  sentimentEl.textContent = row.sentiment || ""
+  sentimentEl.className = `badge badge-${esc(row.sentiment)}`
+
+  const outcomeEl = document.getElementById("drawer-outcome")
+  outcomeEl.textContent = (row.outcome || "").replace("_", " ")
+  outcomeEl.className = `badge badge-${esc(row.outcome)}`
+
+  document.getElementById("drawer-summary").textContent = row.summary || "No summary available."
+
+  const transcriptEl = document.getElementById("drawer-transcript")
+  if (row.transcript) {
+    transcriptEl.textContent = row.transcript
+    transcriptEl.parentElement.style.display = ""
+  } else {
+    transcriptEl.parentElement.style.display = "none"
+  }
+
+  const linksEl = document.getElementById("drawer-links")
+  const linksSection = document.getElementById("drawer-links-section")
+  const linkItems = [
+    row.recording_url  ? `<a class="drawer-link-btn" href="${row.recording_url}"  target="_blank" rel="noopener">▶ Recording</a>`  : "",
+    row.transcript_url ? `<a class="drawer-link-btn" href="${row.transcript_url}" target="_blank" rel="noopener">📄 Transcript</a>` : "",
+  ].filter(Boolean)
+  if (linkItems.length) {
+    linksEl.innerHTML = linkItems.join("")
+    linksSection.style.display = ""
+  } else {
+    linksSection.style.display = "none"
+  }
+
+  document.getElementById("drawer-overlay").classList.add("open")
+  document.getElementById("detail-drawer").classList.add("open")
+  document.body.style.overflow = "hidden"
+}
+
+function closeDrawer() {
+  document.getElementById("drawer-overlay").classList.remove("open")
+  document.getElementById("detail-drawer").classList.remove("open")
+  document.body.style.overflow = ""
+}
+
+window.closeDrawer = closeDrawer
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeDrawer()
+})
+
 // ── VAPI browser call ─────────────────────────────────────────────────────────
 let _vapi = null
 let _calling = false
@@ -123,26 +177,34 @@ function render(rows) {
     return
   }
 
-  document.getElementById("table-body").innerHTML = rows.map(r => {
+  const tbody = document.getElementById("table-body")
+  tbody.innerHTML = rows.map((r, i) => {
     const ts = formatTime(r.timestamp)
     const links = [
-      r.recording_url  ? `<a class="link" href="${r.recording_url}"  target="_blank" rel="noopener">▶ Recording</a>`  : "",
-      r.transcript_url ? `<a class="link" href="${r.transcript_url}" target="_blank" rel="noopener">📄 Transcript</a>` : "",
+      r.recording_url  ? `<a class="link" href="${r.recording_url}"  target="_blank" rel="noopener" onclick="event.stopPropagation()">▶ Recording</a>`  : "",
+      r.transcript_url ? `<a class="link" href="${r.transcript_url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 Transcript</a>` : "",
     ].join("")
     return `
-      <tr>
+      <tr class="clickable-row" data-idx="${i}">
         <td class="time-cell">${ts}</td>
         <td>
           <div class="caller-name">${esc(r.caller_name)}</div>
           <div class="caller-phone">${esc(r.caller_phone)}</div>
         </td>
-        <td><div class="summary" title="${esc(r.summary)}">${esc(r.summary)}</div></td>
+        <td><div class="summary-clickable" title="Click to view details">${esc(r.summary)}</div></td>
         <td><span class="badge badge-${esc(r.sentiment)}">${esc(r.sentiment)}</span></td>
         <td><span class="badge badge-${esc(r.outcome)}">${esc(r.outcome).replace("_", " ")}</span></td>
         <td>${links || "<span class='muted'>—</span>"}</td>
       </tr>
     `
   }).join("")
+
+  tbody.querySelectorAll("tr.clickable-row").forEach(tr => {
+    tr.addEventListener("click", () => {
+      const idx = parseInt(tr.dataset.idx, 10)
+      openDrawer(rows[idx])
+    })
+  })
 }
 
 function pct(n, total) {

@@ -51,6 +51,40 @@
       </div>
     </section>
   </div>
+  <!-- Detail drawer -->
+  <div id="drawer-overlay" class="drawer-overlay" onclick="closeDrawer()"></div>
+  <aside id="detail-drawer" class="detail-drawer" role="dialog" aria-modal="true" aria-label="Call Details">
+    <div class="drawer-header">
+      <div>
+        <div id="drawer-caller-name" class="drawer-caller-name"></div>
+        <div id="drawer-caller-phone" class="drawer-caller-phone"></div>
+      </div>
+      <button class="drawer-close" onclick="closeDrawer()" aria-label="Close">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="drawer-meta">
+        <span id="drawer-time" class="drawer-meta-time"></span>
+        <span id="drawer-sentiment" class="badge"></span>
+        <span id="drawer-outcome" class="badge"></span>
+      </div>
+
+      <div class="drawer-section">
+        <div class="drawer-section-label">Summary</div>
+        <div id="drawer-summary" class="drawer-summary-text"></div>
+      </div>
+
+      <div class="drawer-section">
+        <div class="drawer-section-label">Transcript</div>
+        <div id="drawer-transcript" class="drawer-transcript"></div>
+      </div>
+
+      <div id="drawer-links-section" class="drawer-section">
+        <div class="drawer-section-label">Links</div>
+        <div id="drawer-links" class="drawer-links"></div>
+      </div>
+    </div>
+  </aside>
+
   <script src="constants.js"></script>
   <script type="module" src="app.js"></script>
 </body>

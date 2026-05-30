@@ -163,7 +163,6 @@ tr:hover td { background: var(--accent-light); }
 .time-cell { white-space: nowrap; color: var(--text-faint); font-size: 12px; font-variant-numeric: tabular-nums; }
 .caller-name { font-weight: 600; font-size: 13px; }
 .caller-phone { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
-.summary { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
 .empty { text-align: center; color: var(--text-faint); padding: 48px; }
 
 /* ── Badges ──────────────────────────────────────────────────────────────── */
@@ -188,6 +187,152 @@ tr:hover td { background: var(--accent-light); }
 
 .link { color: var(--accent); text-decoration: none; font-size: 11px; font-weight: 500; margin-right: 8px; }
 .link:hover { text-decoration: underline; }
+
+/* ── Summary clickable ───────────────────────────────────────────────────── */
+.summary-clickable {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 500;
+  transition: color .15s;
+}
+.summary-clickable:hover { color: #4338ca; text-decoration: underline; }
+
+tr.clickable-row { cursor: pointer; }
+
+/* ── Detail drawer ────────────────────────────────────────────────────────── */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease;
+}
+.drawer-overlay.open { opacity: 1; pointer-events: all; }
+
+.detail-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 480px;
+  max-width: 95vw;
+  height: 100vh;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -8px 0 32px rgba(0,0,0,.12);
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
+}
+.detail-drawer.open { transform: translateX(0); }
+
+.drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.drawer-caller-name { font-size: 18px; font-weight: 700; color: var(--text); }
+.drawer-caller-phone { font-size: 12px; color: var(--text-faint); margin-top: 3px; }
+
+.drawer-close {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all .15s;
+}
+.drawer-close:hover { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.drawer-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.drawer-meta-time { font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; margin-right: 4px; }
+
+.drawer-section { display: flex; flex-direction: column; gap: 8px; }
+
+.drawer-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+.drawer-summary-text {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.7;
+  background: var(--accent-light);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  padding: 12px 14px;
+}
+
+.drawer-transcript {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.8;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #fafbfc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+.drawer-transcript::-webkit-scrollbar { width: 4px; }
+.drawer-transcript::-webkit-scrollbar-track { background: transparent; }
+.drawer-transcript::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.drawer-links { display: flex; flex-direction: column; gap: 8px; }
+
+.drawer-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  text-decoration: none;
+  background: var(--surface);
+  transition: all .15s;
+  width: fit-content;
+}
+.drawer-link-btn:hover { background: var(--accent-light); border-color: var(--accent); }
 
 /* ── Loading shimmer ─────────────────────────────────────────────────────── */
 @keyframes shimmer {
