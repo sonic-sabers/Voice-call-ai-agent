@@ -473,6 +473,7 @@ function setActiveView(view) {
   const dashboardView = document.getElementById("dashboard-view");
   const tabCustomer = document.getElementById("tab-customer");
   const tabDashboard = document.getElementById("tab-dashboard");
+  const viewToggle = document.getElementById("view-toggle");
 
   const customerActive = view === "customer";
   customerView.classList.toggle("hidden", !customerActive);
@@ -481,6 +482,15 @@ function setActiveView(view) {
   tabDashboard.classList.toggle("active", !customerActive);
   tabCustomer.setAttribute("aria-selected", String(customerActive));
   tabDashboard.setAttribute("aria-selected", String(!customerActive));
+  if (viewToggle) {
+    viewToggle.classList.toggle("is-customer", customerActive);
+    viewToggle.classList.toggle("is-dashboard", !customerActive);
+  }
+
+  // Always show fresh shimmer + latest error/success state when opening Dashboard.
+  if (!customerActive) {
+    load();
+  }
 }
 
 function setupTabs() {
@@ -554,17 +564,17 @@ function renderCustomerLoadingState() {
   verifyEl.textContent = "Loading caller details...";
   const row = () => `
     <tr>
-      <td><div class="skeleton" style="width:118px;height:12px"></div></td>
-      <td><div class="skeleton" style="width:72px;height:12px"></div></td>
-      <td><div class="skeleton" style="width:76px;height:12px"></div></td>
-      <td><div class="skeleton" style="width:84px;height:12px"></div></td>
-      <td><div class="skeleton" style="width:84px;height:12px"></div></td>
-      <td><div class="skeleton" style="width:124px;height:12px"></div></td>
-      <td><div class="skeleton" style="width:92px;height:12px"></div></td>
-      <td><div class="skeleton" style="width:94px;height:12px"></div></td>
+      <td><div class="skeleton" style="width:118px;height:13px"></div></td>
+      <td><div class="skeleton" style="width:72px;height:13px"></div></td>
+      <td><div class="skeleton" style="width:76px;height:13px"></div></td>
+      <td><div class="skeleton" style="width:84px;height:13px"></div></td>
+      <td><div class="skeleton" style="width:84px;height:13px"></div></td>
+      <td><div class="skeleton" style="width:124px;height:13px"></div></td>
+      <td><div class="skeleton" style="width:92px;height:13px"></div></td>
+      <td><div class="skeleton" style="width:94px;height:13px"></div></td>
     </tr>
   `;
-  tbody.innerHTML = Array.from({ length: 4 }).map(row).join("");
+  tbody.innerHTML = Array.from({ length: 5 }).map(row).join("");
 }
 
 // ── Loading skeletons ─────────────────────────────────────────────────────────
@@ -586,23 +596,54 @@ function renderLoadingState() {
   if (tbody) {
     const row = () => `
       <tr>
-        <td class="time-cell"><div class="skeleton" style="width:60px;height:10px"></div></td>
+        <td class="time-cell"><div class="skeleton" style="width:60px;height:12px"></div></td>
         <td>
-          <div class="skeleton" style="width:120px;height:12px"></div>
-          <div class="skeleton" style="width:90px;height:10px;margin-top:4px"></div>
+          <div class="skeleton" style="width:120px;height:13px"></div>
+          <div class="skeleton" style="width:90px;height:11px;margin-top:4px"></div>
         </td>
-        <td><div class="skeleton" style="width:260px;height:10px"></div></td>
-        <td><div class="skeleton" style="width:60px;height:10px"></div></td>
-        <td><div class="skeleton" style="width:80px;height:10px"></div></td>
+        <td><div class="skeleton" style="width:260px;height:12px"></div></td>
+        <td><div class="skeleton" style="width:60px;height:12px"></div></td>
+        <td><div class="skeleton" style="width:80px;height:12px"></div></td>
         <td><div class="skeleton" style="width:20px;height:20px;border-radius:999px;margin-left:2px"></div></td>
       </tr>`;
-    tbody.innerHTML = Array.from({ length: 8 }).map(row).join("");
+    tbody.innerHTML = Array.from({ length: 10 }).map(row).join("");
   }
 
   renderCustomerLoadingState();
 
   const last = document.getElementById("last-updated");
   if (last) last.textContent = "Loading…";
+}
+
+const INTERACTIONS_TIMEOUT_MS = 10000;
+
+async function fetchJsonWithTimeout(url, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function renderDashboardErrorState(message) {
+  const msg = esc(message || "Could not load dashboard data.");
+  const statsEl = document.getElementById("stats");
+  if (statsEl) {
+    const card = (title) => `
+      <div class="card">
+        <div class="card-title">${title}</div>
+        <div class="card-value" style="font-size:20px">N/A</div>
+        <div class="card-sub">${msg}</div>
+      </div>`;
+    statsEl.innerHTML = [
+      card("Total Calls"),
+      card("Containment Rate"),
+      card("Escalated"),
+      card("Auth Failures"),
+    ].join("");
+  }
 }
 
 // ── Dashboard data ────────────────────────────────────────────────────────────
@@ -612,7 +653,10 @@ async function load() {
   renderLoadingState();
   if (dot) dot.className = "status-dot";
   try {
-    const res = await fetch(`${API_BASE}/api/interactions`);
+    const res = await fetchJsonWithTimeout(
+      `${API_BASE}/api/interactions`,
+      INTERACTIONS_TIMEOUT_MS,
+    );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     _lastData = data;
@@ -622,12 +666,47 @@ async function load() {
       `Updated ${new Date().toLocaleTimeString()}`;
   } catch (e) {
     dot.className = "status-dot error";
-    document.getElementById("last-updated").textContent = `Error: ${e.message}`;
-    renderCustomerView(_lastData);
-    if (_lastData.length === 0) {
-      document.getElementById("table-body").innerHTML =
-        `<tr><td colspan="6" class="empty">Failed to load — is the backend running?</td></tr>`;
+    const isTimeout = e?.name === "AbortError";
+    const lastUpdatedEl = document.getElementById("last-updated");
+    if (lastUpdatedEl) {
+      lastUpdatedEl.textContent = isTimeout
+        ? "No response yet (10 sec timeout)"
+        : `Error: ${e.message}`;
     }
+
+    // If we have old data, keep the UI useful and explain that it's stale.
+    if (_lastData.length > 0) {
+      render(_lastData);
+      if (lastUpdatedEl) {
+        lastUpdatedEl.textContent = isTimeout
+          ? "Showing last synced data - click Refresh"
+          : "Showing last synced data - click Refresh";
+      }
+      return;
+    }
+
+    const verifyEl = document.getElementById("customer-verify");
+    if (verifyEl) {
+      verifyEl.textContent = isTimeout
+        ? "No response yet. It may take up to 10 sec to sync calls."
+        : "Could not load caller details right now. Please refresh.";
+    }
+
+    const customerBody = document.getElementById("customer-caller-body");
+    if (customerBody) {
+      customerBody.innerHTML = `<tr><td colspan="8" class="empty">${isTimeout ? "No response yet. Try Refresh in a few seconds." : "Failed to load caller details. Please refresh."}</td></tr>`;
+    }
+
+    const tableBody = document.getElementById("table-body");
+    if (tableBody) {
+      tableBody.innerHTML = `<tr><td colspan="6" class="empty">${isTimeout ? "No response from server yet. Click Refresh after a few seconds." : "Failed to load interactions. Check backend and click Refresh."}</td></tr>`;
+    }
+    document.getElementById("pagination").innerHTML = "";
+    renderDashboardErrorState(
+      isTimeout
+        ? "No response yet. Try Refresh in a few seconds."
+        : "Failed to load. Click Refresh to retry.",
+    );
   }
 }
 

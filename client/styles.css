@@ -123,17 +123,42 @@ h1 {
 }
 
 .view-toggle {
-  display: inline-flex;
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
-  gap: 4px;
+  gap: 0;
   background: var(--surface-muted);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 3px;
   margin-bottom: 16px;
+  overflow: hidden;
+  isolation: isolate;
+  min-width: 246px;
+}
+
+.view-toggle-indicator {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  height: calc(100% - 6px);
+  width: calc((100% - 6px) / 2);
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: transform 0.24s cubic-bezier(0.2, 0.7, 0.2, 1);
+  z-index: 0;
+}
+
+.view-toggle.is-dashboard .view-toggle-indicator {
+  transform: translateX(100%);
 }
 
 .tab-btn {
+  position: relative;
+  z-index: 1;
   min-height: 28px;
   padding: 0 11px;
   border: 1px solid transparent;
@@ -143,11 +168,10 @@ h1 {
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  transition: color 0.2s ease;
 }
 
 .tab-btn.active {
-  background: var(--surface);
-  border-color: var(--border);
   color: var(--text);
 }
 
@@ -517,7 +541,7 @@ h1 {
 
 .section-actions {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
 }
@@ -539,6 +563,8 @@ h1 {
 .sync-hint {
   font-size: 10px;
   line-height: 1.2;
+  text-align: right;
+  white-space: nowrap;
 }
 
 section h2 {
