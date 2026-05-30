@@ -58,11 +58,18 @@ async def handle_call_end(request: Request, prefetched_body: dict | None = None)
 
     transcript: str = artifact.get("transcript", "") or ""
     call_id: str = call.get("id") or "unknown"
-    caller_phone: str = call.get("customer", {}).get("number") or "unknown"
     session = call_session.get(call_id, {})
+    pending = pending_callers.get(call_id, {})
+    # customer.number only present for PSTN calls — fall back to phone stored during lookup_caller
+    caller_phone: str = (
+        call.get("customer", {}).get("number")
+        or session.get("phone")
+        or pending.get("phone")
+        or "unknown"
+    )
     caller_name: str = (
         session.get("caller_name")
-        or pending_callers.get(call_id, {}).get("caller_name")
+        or pending.get("caller_name")
         or "Unknown"
     )
     recording_url: str = artifact.get("recordingUrl", "") or ""
