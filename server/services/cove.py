@@ -11,6 +11,8 @@ from server.core.constants import CLAIM_PROCESSING_DAYS, PORTAL_URL, SUPPORT_EMA
 from server.core.state import authenticated_calls
 from server.services.sheets import lookup_caller
 
+# Explicit allowlist — any unrecognised status (DB typo, future value) returns
+# safe_to_speak=False rather than leaking raw data through an unhandled branch.
 _VALID_STATUSES = frozenset({"approved", "pending", "requires_documentation"})
 
 

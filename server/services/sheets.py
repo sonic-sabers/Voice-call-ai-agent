@@ -81,7 +81,9 @@ def _with_retry(fn, label: str):
         except (gspread.exceptions.APIError, gspread.exceptions.GSpreadException) as exc:
             last_exc = exc
             log.warning("%s attempt %d failed: %s", label, attempt + 1, exc)
-            # Re-create client on auth errors so next attempt gets fresh token.
+            # Service-account tokens can expire mid-process; dropping _client forces
+            # _get_client() to re-authorize on the next attempt rather than reusing
+            # a stale credential object.
             if hasattr(exc, "response") and getattr(exc.response, "status_code", 0) in (401, 403):
                 global _client
                 with _client_lock:
@@ -166,6 +168,8 @@ def get_interactions() -> list[dict[str, Any]]:
     """Return all rows from 'interactions' sheet, cached for INTERACTIONS_CACHE_TTL seconds."""
     global _interactions_cache, _interactions_ts
 
+    # First lock: check staleness only — release before the network call so
+    # other threads aren't blocked while we wait for Sheets.
     with _interactions_lock:
         if time.monotonic() - _interactions_ts < INTERACTIONS_CACHE_TTL:
             return list(_interactions_cache)
@@ -175,6 +179,8 @@ def get_interactions() -> list[dict[str, Any]]:
 
     fresh = _with_retry(_fetch, "get_interactions")
 
+    # Second lock: write fresh data back; concurrent fetchers may have also
+    # fetched by now — last writer wins, which is fine for a read-only cache.
     with _interactions_lock:
         _interactions_cache = fresh
         _interactions_ts = time.monotonic()

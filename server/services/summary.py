@@ -25,7 +25,9 @@ def generate_summary(transcript: str) -> str:
     if not transcript:
         return ""
     try:
-        from openai import OpenAI  # lazy import — optional dependency path
+        # Lazy import: openai is an optional dep — server starts and handles calls
+        # normally even if OPENAI_API_KEY is absent; summary degrades to truncation.
+        from openai import OpenAI
 
         client = OpenAI(api_key=get_settings().openai_api_key)
         resp = client.chat.completions.create(

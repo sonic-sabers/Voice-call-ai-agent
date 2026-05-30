@@ -223,6 +223,8 @@ def _handle_compose_claim_response(tc_id: str, args: dict[str, Any], call_id: st
 
 # ── dispatcher ────────────────────────────────────────────────────────────────
 
+# Tools that require the server-side call_id to read/write per-call state.
+# Kept separate so stateless tools (answer_faq) never receive a call_id arg.
 _CALL_ID_TOOLS = frozenset(
     {"lookup_caller", "confirm_identity", "verify_identity", "compose_claim_response"}
 )
@@ -250,7 +252,9 @@ async def handle_tool_call(request: Request) -> JSONResponse:
         return JSONResponse({"error": "message must be an object"}, status_code=400)
     log.debug("tool webhook body: %s", json.dumps(body)[:500])
 
-    # VAPI sends all server messages to serverUrl — route end-of-call reports here too.
+    # When VAPI is configured with a single serverUrl (instead of separate toolsUrl /
+    # serverUrl), all message types arrive at /webhook/tool. Detect end-of-call
+    # reports here and forward them rather than treating them as a tool call.
     if msg.get("type") == "end-of-call-report":
         from server.services.call_end import handle_call_end  # local import avoids circular
         return await handle_call_end(request, prefetched_body=body)

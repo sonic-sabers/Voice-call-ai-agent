@@ -30,6 +30,7 @@ _STATE_FILE = STATE_FILE
 
 
 def _touch(call_id: str) -> None:
+    # Updates last-activity timestamp; called on every write so TTL eviction is accurate.
     _call_ts[call_id] = time.time()
 
 
@@ -63,6 +64,7 @@ def save_state() -> None:
 
 
 def _set_with_touch(store: dict, call_id: str, value: dict) -> None:
+    # Single helper so every state write also refreshes the TTL clock.
     store[call_id] = value
     _touch(call_id)
 
@@ -82,4 +84,5 @@ def load_state() -> None:
         log.warning("load_state failed: %s", exc)
 
 
+# Restore any state that survived the previous process; no-op if file absent.
 load_state()

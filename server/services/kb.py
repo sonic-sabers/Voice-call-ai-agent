@@ -42,6 +42,8 @@ def query_knowledge_base(question: str) -> str | None:
             q = question.lower()
             for record in records:
                 tag = record["fields"].get("tag", "").lower()
+                # tag-in-question (not question-in-tag) so short keywords like
+                # "hours" match a full question like "what are your office hours?"
                 if tag and tag in q:
                     return record["fields"].get("answer")  # type: ignore[return-value]
             return None

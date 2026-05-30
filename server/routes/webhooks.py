@@ -10,6 +10,8 @@ router = APIRouter(tags=["webhooks"])
 limiter = Limiter(key_func=get_remote_address)
 
 
+# Multiple path aliases because VAPI changed its webhook URL convention across
+# assistant versions (/tool-calls, /tool_calls, /tool). All route to the same handler.
 @router.post("/webhook/tool")
 @router.post("/webhook/tool-calls")
 @router.post("/webhook/tool_calls")
@@ -18,6 +20,7 @@ async def webhook_tool(request: Request):  # type: ignore[return]
     return await handle_tool_call(request)
 
 
+# /end-of-call-report is the VAPI serverUrl convention; /call-end is our own alias.
 @router.post("/webhook/call-end")
 @router.post("/webhook/end-of-call-report")
 @limiter.limit(RATE_LIMIT_CALL_END_WEBHOOK)

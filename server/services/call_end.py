@@ -36,8 +36,10 @@ def derive_outcome(transcript: str) -> str:
 
 
 async def handle_call_end(request: Request, prefetched_body: dict | None = None) -> JSONResponse:
-    # prefetched_body is only set when called from handle_tool_call, which already
-    # verified the VAPI secret. For direct webhook POSTs, always require auth.
+    # Two entry points share this handler:
+    #   1. Direct POST to /webhook/call-end — auth check required.
+    #   2. Routed from handle_tool_call (end-of-call-report in tool webhook) — body
+    #      already parsed + secret already verified, passed as prefetched_body.
     if prefetched_body is None and not verify_vapi_secret(request):
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
 

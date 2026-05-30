@@ -1,3 +1,4 @@
+"""Typed model for a completed call record written to the interactions sheet."""
 from dataclasses import dataclass, field
 
 

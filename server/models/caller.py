@@ -1,3 +1,4 @@
+"""Typed model for a caller row read from the 'callers' Google Sheet."""
 from dataclasses import dataclass
 
 
