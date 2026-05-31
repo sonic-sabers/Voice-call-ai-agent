@@ -150,7 +150,7 @@ def lookup_by_name_dob(last_name: str, dob_partial: str) -> CallerRecord | None:
                 match = stored_dob == dob_partial
             if match:
                 return CallerRecord(
-                    phone=row[0],
+                    phone=_normalize_phone(row[0]),
                     first_name=row[1],
                     last_name=row[2],
                     dob=row[3],
@@ -186,7 +186,7 @@ def lookup_by_name_zip(last_name: str, zip_code: str) -> CallerRecord | None:
                 continue
             if re.sub(r"\D", "", row[8])[:5] == zip_norm:
                 return CallerRecord(
-                    phone=row[0],
+                    phone=_normalize_phone(row[0]),
                     first_name=row[1],
                     last_name=row[2],
                     dob=row[3],
