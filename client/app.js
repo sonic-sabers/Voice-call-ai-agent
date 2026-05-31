@@ -1130,10 +1130,6 @@ function pct(n, total) {
 function formatTime(iso) {
   try {
     const d = new Date(iso);
-    const today = new Date();
-    const isToday = d.toDateString() === today.toDateString();
-    if (isToday)
-      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     return (
       d.toLocaleDateString([], { month: "short", day: "numeric" }) +
       " " +
