@@ -32,15 +32,18 @@ def compose_claim_response(phone: str, call_id: str) -> ClaimResponseOutput:
     4. Compose: return exact wording the LLM must speak verbatim.
     """
     # Step 1 — auth guard
+    # Use server-side registered phone — LLM may pass unregistered caller phone
+    # in alternate-phone flows (verify_by_name_zip / verify_by_name_dob).
     auth_entry = authenticated_calls.get(call_id)
-    if not auth_entry or auth_entry.get("phone") != phone:
+    if not auth_entry:
         return ClaimResponseOutput(
             safe_to_speak=False,
             response="I'm having trouble verifying the account. A representative will follow up shortly.",
         )
+    registered_phone = auth_entry.get("phone") or phone
 
-    # Step 2 — re-fetch
-    record = lookup_caller(phone)
+    # Step 2 — re-fetch using registered phone (not LLM-provided phone)
+    record = lookup_caller(registered_phone)
 
     # Step 3 — validate
     if not record or record.claim_status not in _VALID_STATUSES:
