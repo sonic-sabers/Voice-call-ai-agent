@@ -220,6 +220,7 @@ def log_interaction(entry: dict[str, str]) -> None:
         entry["outcome"],
         entry.get("recording_url", ""),
         entry.get("transcript_url", ""),
+        entry.get("escalation_reason", ""),
     ]
 
     def _write():

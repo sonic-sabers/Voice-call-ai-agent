@@ -92,6 +92,8 @@ async def handle_call_end(request: Request, prefetched_body: dict | None = None)
         log.warning("generate_summary failed, using truncated transcript: %s", exc)
         summary = transcript[:SUMMARY_FALLBACK_LENGTH].strip() + ("..." if len(transcript) > SUMMARY_FALLBACK_LENGTH else "")
 
+    escalation_reason: str = session.get("escalation_reason", "")
+
     try:
         log_interaction(
             {
@@ -104,6 +106,7 @@ async def handle_call_end(request: Request, prefetched_body: dict | None = None)
                 "outcome": outcome,
                 "recording_url": recording_url,
                 "transcript_url": transcript_url,
+                "escalation_reason": escalation_reason,
             }
         )
     except Exception as exc:

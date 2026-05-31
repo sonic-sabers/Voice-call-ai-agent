@@ -1,4 +1,18 @@
 // C is loaded by constants.js (see index.html)
+
+const ESCALATION_LABELS = {
+  representative_requested: "Representative Requested",
+  unsupported_question: "Unsupported Question",
+  verification_failed: "Verification Failed",
+  emergency: "Emergency",
+};
+function escalationLabel(reason) {
+  return ESCALATION_LABELS[reason] || reason.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+function capitalize(str) {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
 const API_BASE =
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1"
@@ -221,17 +235,17 @@ function openDrawer(row, autoPlay = false) {
   );
 
   const sentimentEl = document.getElementById("drawer-sentiment");
-  sentimentEl.textContent = row.sentiment || "";
+  sentimentEl.textContent = capitalize(row.sentiment || "");
   sentimentEl.className = `badge badge-${esc(row.sentiment)}`;
 
   const outcomeEl = document.getElementById("drawer-outcome");
-  outcomeEl.textContent = (row.outcome || "").replace(/_/g, " ");
+  outcomeEl.textContent = capitalize((row.outcome || "").replace(/_/g, " "));
   outcomeEl.className = `badge badge-${esc(row.outcome)}`;
 
   const escalationEl = document.getElementById("drawer-escalation");
   const escalationWrap = document.getElementById("drawer-escalation-wrap");
   if (row.escalation_reason && escalationEl && escalationWrap) {
-    escalationEl.textContent = row.escalation_reason.replace(/_/g, " ");
+    escalationEl.textContent = escalationLabel(row.escalation_reason);
     escalationWrap.style.display = "";
   } else if (escalationWrap) {
     escalationWrap.style.display = "none";
@@ -1032,7 +1046,7 @@ function renderPage() {
          </button>`
         : `<span class="muted">Not available</span>`;
       const escalationCell = r.escalation_reason
-        ? `<span class="badge badge-escalation-${esc(r.escalation_reason)}">${esc(r.escalation_reason).replace(/_/g, " ")}</span>`
+        ? `<span class="badge badge-escalation-${esc(r.escalation_reason)}">${escalationLabel(r.escalation_reason)}</span>`
         : `<span class="muted">—</span>`;
       return `
       <tr class="clickable-row" data-idx="${globalIdx}">
@@ -1042,8 +1056,8 @@ function renderPage() {
           <div class="caller-phone">${esc(r.caller_phone)}</div>
         </td>
         <td><div class="summary-clickable" title="Click to view details">${esc(r.summary)}</div></td>
-        <td><span class="badge badge-${esc(r.sentiment)}">${esc(r.sentiment)}</span></td>
-        <td><span class="badge badge-${esc(r.outcome)}">${esc(r.outcome).replace(/_/g, " ")}</span></td>
+        <td><span class="badge badge-${esc(r.sentiment)}">${capitalize(r.sentiment)}</span></td>
+        <td><span class="badge badge-${esc(r.outcome)}">${capitalize(r.outcome.replace(/_/g, " "))}</span></td>
         <td>${escalationCell}</td>
         <td>${playCell}</td>
       </tr>
