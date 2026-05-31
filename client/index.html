@@ -159,27 +159,29 @@
               <div class="talk-guide-sub muted">Click any flow to expand the script.</div>
 
               <details class="talk-item">
-                <summary>1. Happy path — Maya Patel, approved claim</summary>
+                <summary>1. Happy path: Maya Patel, approved claim</summary>
                 <div class="talk-content">
-                  <pre>Call from: +1 408-555-0192
+                  <pre>You are pretending to be Maya Patel. When Aria asks for your number, say: 408-555-0192
 
 Aria:   "Could I get your phone number so I can pull up your account?"
-Caller: "408-555-0192."
+You:    "408-555-0192."
 Aria:   "Am I speaking with Maya Patel?"
-Caller: "Yes, that’s me."
+You:    "Yes, that’s me."
 Aria:   "Great news, Maya — your claim CLM-2847 has been approved and payment is on its way."
-Caller: "How long does that take?"
+You:    "How long does that take?"
 Aria:   "Claims resolve within 5 to 7 business days after approval."</pre>
                 </div>
               </details>
 
               <details class="talk-item">
-                <summary>2. Documentation required — Carlos Rivera</summary>
+                <summary>2. Documentation required: Carlos Rivera</summary>
                 <div class="talk-content">
-                  <pre>Call from: +1 312-555-0371
+                  <pre>You are pretending to be Carlos Rivera. When Aria asks for your number, say: 312-555-0371
 
+Aria:   "Could I get your phone number so I can pull up your account?"
+You:    "312-555-0371."
 Aria:   "Am I speaking with Carlos Rivera?"
-Caller: "Yes."
+You:    "Yes."
 Aria:   "Carlos, your claim CLM-3105 is on hold pending documentation. We need a
          radiology report and a treating physician statement. You can upload at
          observeinsurance.com/portal or email support@observeinsurance.com."</pre>
@@ -187,54 +189,62 @@ Aria:   "Carlos, your claim CLM-3105 is on hold pending documentation. We need a
               </details>
 
               <details class="talk-item">
-                <summary>3. Alternate phone — ZIP verification succeeds</summary>
+                <summary>3. Alternate phone: ZIP verification succeeds</summary>
                 <div class="talk-content">
-                  <pre>Call from: any number NOT in the table (e.g. your own mobile)
+                  <pre>You are pretending to be Maya Patel calling from a different phone.
+When Aria asks for your number, give any made-up number (e.g. 555-000-0001).
 
 Aria:   "I wasn’t able to find an account with that number — you may be calling
-         from a different phone. Could I get your last name and the ZIP code on
-         your policy?"
-Caller: "Patel. ZIP is 95110."
+         from a different phone. Could I get your last name?"
+You:    "Patel."
+Aria:   "And the ZIP code on your policy?"
+You:    "95110."
 Aria:   "Got it, Maya — one moment."
          → claim status delivered normally</pre>
                 </div>
               </details>
 
               <details class="talk-item">
-                <summary>4. Alternate phone — ZIP fails, DOB succeeds</summary>
+                <summary>4. Alternate phone: ZIP fails, DOB succeeds</summary>
                 <div class="talk-content">
-                  <pre>Call from: any number NOT in the table
+                  <pre>You are pretending to be Maya Patel on a different phone. Give a wrong ZIP.
+When Aria asks for your number, give any made-up number (e.g. 555-000-0001).
 
-Aria:   "Could I get your last name and the ZIP code on your policy?"
-Caller: "Patel. 94101 — I think."
+Aria:   "Could I get your last name?"
+You:    "Patel."
+Aria:   "And the ZIP code on your policy?"
+You:    "94101."   ← wrong ZIP on purpose
 Aria:   "I wasn’t able to match that. Could I get your date of birth?"
-Caller: "September 14."   (or "09-14" or "September 14th 1987")
+You:    "September 14."   (or "09-14" or "September 14th 1987")
 Aria:   "Got it, Maya — one moment."
          → claim status delivered normally</pre>
                 </div>
               </details>
 
               <details class="talk-item">
-                <summary>5. Alternate phone — all checks fail, transfer</summary>
+                <summary>5. Alternate phone: all checks fail, transfer</summary>
                 <div class="talk-content">
-                  <pre>Call from: any number NOT in the table
+                  <pre>Give any made-up number when asked. Then give wrong last name, wrong ZIP, wrong DOB.
 
-Caller: gives wrong last name or wrong ZIP and wrong DOB
+Aria:   "Could I get your last name?"
+You:    "Smith."   ← not in system
+Aria:   "And the ZIP code on your policy?"
+You:    "10001."   ← wrong
+Aria:   "I wasn’t able to match that. Could I get your date of birth?"
+You:    "January 1st, 1990."   ← wrong
 Aria:   "I wasn’t able to verify the account. For your privacy, I can connect
          you with a specialist. Would you like me to transfer you now?"
-Caller: "Yes please."
-Aria:   "I’ll route you to a specialist now and include my notes so you won’t
-         need to repeat yourself."
+You:    "Yes please."
          → call transferred to agent queue</pre>
                 </div>
               </details>
 
               <details class="talk-item">
-                <summary>6. Escalation — caller requests a representative</summary>
+                <summary>6. Escalation: caller requests a representative</summary>
                 <div class="talk-content">
-                  <pre>Can be triggered at any point in the call.
+                  <pre>Can be triggered at any point in the call (before or after verification).
 
-Caller: "I want to speak to a real person." / "Can I talk to an agent?"
+You:    "I want to speak to a real person." / "Can I talk to an agent?"
 Aria:   "Of course — I’ll connect you with a specialist now. They’ll have my
          notes so you won’t need to repeat yourself."
          → call transferred immediately</pre>
@@ -242,41 +252,44 @@ Aria:   "Of course — I’ll connect you with a specialist now. They’ll have 
               </details>
 
               <details class="talk-item">
-                <summary>7. Escalation — unsupported question (billing, complaints)</summary>
+                <summary>7. Escalation: unsupported question (billing, complaints)</summary>
                 <div class="talk-content">
-                  <pre>Trigger: ask about payments, premiums, billing disputes, policy changes.
+                  <pre>Say this at any point — no verification needed.
 
-Caller: "I want to dispute my premium. I’ve been overcharged."
+You:    "I want to dispute my premium. I’ve been overcharged."
 Aria:   "I can help with claim status and documents. For billing and premium
          disputes, a specialist is best placed to assist — would you like me
          to connect you?"
-Caller: "Yes."
+You:    "Yes."
          → call transferred with reason logged</pre>
                 </div>
               </details>
 
               <details class="talk-item">
-                <summary>8. Emergency — safety keyword detected</summary>
+                <summary>8. Emergency: safety keyword detected</summary>
                 <div class="talk-content">
-                  <pre>Trigger: say any safety keyword during the call.
-Keywords: harm, hurt, suicide, crisis, 911, danger, overdose.
+                  <pre>Say this at any point — interrupts the entire flow immediately.
 
-Caller: "I can’t take this anymore, I’m thinking of hurting myself."
+You:    "I can’t take this anymore, I’m thinking of hurting myself."
 Aria:   "Please hang up and call 911 immediately. Emergency services can
          help you right now."
-         → call ends immediately, reason logged as ‘emergency’</pre>
+         → call ends immediately, reason logged as ‘emergency’
+
+Other trigger phrases: "I want to harm myself", "I’m in danger",
+"I’m thinking of suicide", "I’m having a crisis"</pre>
                 </div>
               </details>
 
               <details class="talk-item">
-                <summary>9. Auth failure — wrong name + wrong DOB (Amara)</summary>
+                <summary>9. Auth failure: wrong name + wrong DOB</summary>
                 <div class="talk-content">
-                  <pre>Call from: +1 714-555-0884
+                  <pre>You are pretending to be someone else on Amara’s account.
+When Aria asks for your number, say: 714-555-0884
 
 Aria:   "Am I speaking with Amara Okonkwo?"
-Caller: "No, this is her husband."
+You:    "No, this is her husband."
 Aria:   "Could I get the date of birth on the account?"
-Caller: "March 15th, 1979."
+You:    "March 15th, 1979."   ← wrong DOB
 Aria:   "I wasn’t able to verify the account. For your privacy, I can connect
          you with a specialist. Would you like me to transfer you?"</pre>
                 </div>
