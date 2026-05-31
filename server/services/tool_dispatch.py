@@ -296,7 +296,7 @@ def _handle_escalate(tc_id: str, args: dict[str, Any], call_id: str) -> dict[str
     captures the escalation reason without relying on transcript parsing.
     """
     reason = args.get("reason", "unknown")
-    valid_reasons = {"representative_requested", "unsupported_question", "emergency"}
+    valid_reasons = {"representative_requested", "unsupported_question", "emergency", "verification_failed"}
     if reason not in valid_reasons:
         reason = "unknown"
     log.info("escalate: call_id=%s reason=%s", call_id, reason)
