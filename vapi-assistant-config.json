@@ -290,6 +290,11 @@
     "waitSeconds": 0.4,
     "smartEndpointingEnabled": true
   },
+  "stopSpeakingPlan": {
+    "numWords": 2,
+    "voiceSeconds": 0.2,
+    "backoffSeconds": 1.0
+  },
   "server": {
     "url": "https://voice-call-ai-agent.onrender.com/webhook/tool",
     "timeoutSeconds": 20,
