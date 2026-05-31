@@ -51,7 +51,8 @@ def compose_claim_response(phone: str, call_id: str) -> ClaimResponseOutput:
 
     # Step 4 — compose
     claim_id_spoken = record.claim_id.replace("-", " ")  # CLM-2847 → CLM 2847 (avoids TTS "minus")
-    policy_suffix = f" under policy {record.policy_number}" if record.policy_number else ""
+    policy_spoken = record.policy_number.replace("-", " ") if record.policy_number else ""
+    policy_suffix = f" under policy {policy_spoken}" if policy_spoken else ""
 
     if record.claim_status == "approved":
         return ClaimResponseOutput(

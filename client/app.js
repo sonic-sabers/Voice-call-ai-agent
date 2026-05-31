@@ -314,7 +314,7 @@ let _micPermStatusHandle = null;
 let _callTimerInterval = null;
 let _callStartTime = null;
 let _muted = false;
-let _speakerOn = false;
+let _speakerOn = true;
 let _vapiAudioEls = [];  // audio elements created by VAPI/Daily during a call
 let _audioObserver = null;
 
@@ -527,6 +527,14 @@ function setCallBtn(active) {
   if (active) {
     startCallTimer();
     startAudioObserver();
+    // Ensure speaker button reflects default-on state
+    const spkBtnStart = document.getElementById("pac-speaker-btn");
+    if (spkBtnStart) {
+      spkBtnStart.classList.add("active");
+      spkBtnStart.setAttribute("aria-pressed", "true");
+      const sl = spkBtnStart.querySelector(".pac-ctrl-label");
+      if (sl) sl.textContent = "Speaker On";
+    }
   } else {
     stopCallTimer();
     stopAudioObserver();
@@ -539,14 +547,14 @@ function setCallBtn(active) {
       const ml = muteBtn.querySelector(".pac-ctrl-label");
       if (ml) ml.textContent = "Mute";
     }
-    // Reset speaker state
-    _speakerOn = false;
+    // Reset speaker state (default: on)
+    _speakerOn = true;
     const spkBtn = document.getElementById("pac-speaker-btn");
     if (spkBtn) {
-      spkBtn.classList.remove("active");
-      spkBtn.setAttribute("aria-pressed", "false");
+      spkBtn.classList.add("active");
+      spkBtn.setAttribute("aria-pressed", "true");
       const sl = spkBtn.querySelector(".pac-ctrl-label");
-      if (sl) sl.textContent = "Speaker";
+      if (sl) sl.textContent = "Speaker On";
     }
     applyVolumeToCallAudio(1.0);
   }
