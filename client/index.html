@@ -145,7 +145,8 @@
                     <th>Last Name</th>
                     <th>DOB</th>
                     <th>Claim ID</th>
-                    <th>Claim Status</th>
+                    <th>Status</th>
+                    <th>ZIP</th>
                     <th>Docs Required</th>
                     <th>Policy</th>
                   </tr>
@@ -154,71 +155,130 @@
               </table>
             </div>
             <div class="talk-guide">
-              <div class="talk-guide-title">What to talk?</div>
-              <div class="talk-guide-sub muted">Noting in mind, here’s the sample conversation.</div>
+              <div class="talk-guide-title">Sample Conversations</div>
+              <div class="talk-guide-sub muted">Click any flow to expand the script.</div>
 
               <details class="talk-item">
-                <summary>1. Maya Patel - +1 408-555-0192 - approved (happy path)</summary>
+                <summary>1. Happy path — Maya Patel, approved claim</summary>
                 <div class="talk-content">
-                  <pre>Phone: +1 408-555-0192
+                  <pre>Call from: +1 408-555-0192
 
-Aria: "Thank you for calling Observe Insurance. I'm Aria, your AI claims assistant.
-This call may be recorded for quality purposes. Is that okay?"
-Caller: "Sure, that's fine."
-Aria: "May I have the phone number on your account?"
-Caller: "408-555-0192"
-Aria: "Am I speaking with Maya Patel?"
-Caller: "Yes, that's me."
-Aria: "Great news - your claim CLM-2847 has been approved."
-Caller: "How long does payment take?"
-Aria: "Standard claims resolve within 5 to 7 business days."</pre>
+Aria:   "Could I get your phone number so I can pull up your account?"
+Caller: "408-555-0192."
+Aria:   "Am I speaking with Maya Patel?"
+Caller: "Yes, that’s me."
+Aria:   "Great news, Maya — your claim CLM-2847 has been approved and payment is on its way."
+Caller: "How long does that take?"
+Aria:   "Claims resolve within 5 to 7 business days after approval."</pre>
                 </div>
               </details>
 
               <details class="talk-item">
-                <summary>2. Carlos Rivera - +1 312-555-0371 - documentation required</summary>
+                <summary>2. Documentation required — Carlos Rivera</summary>
                 <div class="talk-content">
-                  <pre>Phone: +1 312-555-0371
+                  <pre>Call from: +1 312-555-0371
 
-Aria: "Am I speaking with Carlos Rivera?"
+Aria:   "Am I speaking with Carlos Rivera?"
 Caller: "Yes."
-Aria: "Your claim CLM-3105 requires additional documentation."
-Aria: "Specifically, radiology report and treating physician statement."</pre>
+Aria:   "Carlos, your claim CLM-3105 is on hold pending documentation. We need a
+         radiology report and a treating physician statement. You can upload at
+         observeinsurance.com/portal or email support@observeinsurance.com."</pre>
                 </div>
               </details>
 
               <details class="talk-item">
-                <summary>3. Unknown caller - +1 999-555-0000 (error path)</summary>
+                <summary>3. Alternate phone — ZIP verification succeeds</summary>
                 <div class="talk-content">
-                  <pre>Phone: +1 999-555-0000
+                  <pre>Call from: any number NOT in the table (e.g. your own mobile)
 
-Aria: "I wasn't able to locate an account with that number."
-Aria: "A representative will follow up within one business day."</pre>
+Aria:   "I wasn’t able to find an account with that number — you may be calling
+         from a different phone. Could I get your last name and the ZIP code on
+         your policy?"
+Caller: "Patel. ZIP is 95110."
+Aria:   "Got it, Maya — one moment."
+         → claim status delivered normally</pre>
                 </div>
               </details>
 
               <details class="talk-item">
-                <summary>4. Identity denied - +1 714-555-0884 - DOB fails (Amara)</summary>
+                <summary>4. Alternate phone — ZIP fails, DOB succeeds</summary>
                 <div class="talk-content">
-                  <pre>Phone: +1 714-555-0884
+                  <pre>Call from: any number NOT in the table
 
-Aria: "Am I speaking with Amara Okonkwo?"
-Caller: "This is her husband."
-Aria: "For security, I'll need to verify the date of birth on the account."
+Aria:   "Could I get your last name and the ZIP code on your policy?"
+Caller: "Patel. 94101 — I think."
+Aria:   "I wasn’t able to match that. Could I get your date of birth?"
+Caller: "September 14."   (or "09-14" or "September 14th 1987")
+Aria:   "Got it, Maya — one moment."
+         → claim status delivered normally</pre>
+                </div>
+              </details>
+
+              <details class="talk-item">
+                <summary>5. Alternate phone — all checks fail, transfer</summary>
+                <div class="talk-content">
+                  <pre>Call from: any number NOT in the table
+
+Caller: gives wrong last name or wrong ZIP and wrong DOB
+Aria:   "I wasn’t able to verify the account. For your privacy, I can connect
+         you with a specialist. Would you like me to transfer you now?"
+Caller: "Yes please."
+Aria:   "I’ll route you to a specialist now and include my notes so you won’t
+         need to repeat yourself."
+         → call transferred to agent queue</pre>
+                </div>
+              </details>
+
+              <details class="talk-item">
+                <summary>6. Escalation — caller requests a representative</summary>
+                <div class="talk-content">
+                  <pre>Can be triggered at any point in the call.
+
+Caller: "I want to speak to a real person." / "Can I talk to an agent?"
+Aria:   "Of course — I’ll connect you with a specialist now. They’ll have my
+         notes so you won’t need to repeat yourself."
+         → call transferred immediately</pre>
+                </div>
+              </details>
+
+              <details class="talk-item">
+                <summary>7. Escalation — unsupported question (billing, complaints)</summary>
+                <div class="talk-content">
+                  <pre>Trigger: ask about payments, premiums, billing disputes, policy changes.
+
+Caller: "I want to dispute my premium. I’ve been overcharged."
+Aria:   "I can help with claim status and documents. For billing and premium
+         disputes, a specialist is best placed to assist — would you like me
+         to connect you?"
+Caller: "Yes."
+         → call transferred with reason logged</pre>
+                </div>
+              </details>
+
+              <details class="talk-item">
+                <summary>8. Emergency — safety keyword detected</summary>
+                <div class="talk-content">
+                  <pre>Trigger: say any safety keyword during the call.
+Keywords: harm, hurt, suicide, crisis, 911, danger, overdose.
+
+Caller: "I can’t take this anymore, I’m thinking of hurting myself."
+Aria:   "Please hang up and call 911 immediately. Emergency services can
+         help you right now."
+         → call ends immediately, reason logged as ‘emergency’</pre>
+                </div>
+              </details>
+
+              <details class="talk-item">
+                <summary>9. Auth failure — wrong name + wrong DOB (Amara)</summary>
+                <div class="talk-content">
+                  <pre>Call from: +1 714-555-0884
+
+Aria:   "Am I speaking with Amara Okonkwo?"
+Caller: "No, this is her husband."
+Aria:   "Could I get the date of birth on the account?"
 Caller: "March 15th, 1979."
-Aria: "I'm sorry - I'm unable to verify that information."
-Aria: "A representative will follow up shortly."</pre>
-                </div>
-              </details>
-
-              <details class="talk-item">
-                <summary>5. Representative escalation - +1 408-555-0192 (required flow)</summary>
-                <div class="talk-content">
-                  <pre>Phone: +1 408-555-0192
-
-Aria: "Great news - your claim CLM-2847 has been approved. Is there anything else?"
-Caller: "I want to speak to a real person about this."
-Aria: "Of course. I'll schedule a callback from a representative."</pre>
+Aria:   "I wasn’t able to verify the account. For your privacy, I can connect
+         you with a specialist. Would you like me to transfer you?"</pre>
                 </div>
               </details>
             </div>
@@ -252,12 +312,13 @@ Aria: "Of course. I'll schedule a callback from a representative."</pre>
                 <th>Summary</th>
                 <th>Sentiment</th>
                 <th>Outcome</th>
+                <th>Escalation</th>
                 <th>Listen</th>
               </tr>
             </thead>
             <tbody id="table-body">
               <tr>
-                <td colspan="6" class="empty">Loading…</td>
+                <td colspan="7" class="empty">Loading…</td>
               </tr>
             </tbody>
           </table>
@@ -292,6 +353,10 @@ Aria: "Of course. I'll schedule a callback from a representative."</pre>
           <span id="drawer-time" class="drawer-meta-time"></span>
           <span id="drawer-sentiment" class="badge"></span>
           <span id="drawer-outcome" class="badge"></span>
+          <span id="drawer-escalation-wrap" style="display:none">
+            <span class="drawer-meta-label">escalation:</span>
+            <span id="drawer-escalation" class="badge badge-escalated"></span>
+          </span>
         </div>
 
         <!-- Audio player -->

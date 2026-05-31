@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import random
+import re
 import threading
 import time
 from functools import lru_cache
@@ -117,10 +118,87 @@ def lookup_caller(phone: str) -> CallerRecord | None:
                     claim_status=row[5],
                     docs_required=row[6],
                     policy_number=row[7] if len(row) > 7 else "",
+                    zip_code=row[8] if len(row) > 8 else "",
                 )
         return None
 
     return _with_retry(_fetch, "lookup_caller")
+
+
+def lookup_by_name_dob(last_name: str, dob_partial: str) -> CallerRecord | None:
+    """Look up caller by last_name + DOB (YYYY-MM-DD or MM-DD suffix).
+
+    Used when caller phones from an unregistered number. Never LRU-cached —
+    name+DOB combos are not unique enough to cache safely.
+    """
+    last_name_norm = last_name.strip().lower()
+    # Accept full YYYY-MM-DD or partial MM-DD
+    is_partial = not re.fullmatch(r"\d{4}-\d{2}-\d{2}", dob_partial)
+    mm_dd = dob_partial[-5:] if is_partial else dob_partial[5:]  # MM-DD portion
+
+    def _fetch():
+        rows: list[list[Any]] = _open_sheet(_get_client(), SHEET_TAB_CALLERS).get_all_values()
+        for row in rows[1:]:
+            if len(row) < 7:
+                continue
+            if row[2].strip().lower() != last_name_norm:
+                continue
+            stored_dob: str = row[3]  # YYYY-MM-DD
+            if is_partial:
+                match = stored_dob[5:] == mm_dd
+            else:
+                match = stored_dob == dob_partial
+            if match:
+                return CallerRecord(
+                    phone=row[0],
+                    first_name=row[1],
+                    last_name=row[2],
+                    dob=row[3],
+                    claim_id=row[4],
+                    claim_status=row[5],
+                    docs_required=row[6],
+                    policy_number=row[7] if len(row) > 7 else "",
+                    zip_code=row[8] if len(row) > 8 else "",
+                )
+        return None
+
+    return _with_retry(_fetch, "lookup_by_name_dob")
+
+
+def lookup_by_name_zip(last_name: str, zip_code: str) -> CallerRecord | None:
+    """Look up caller by last_name + ZIP code.
+
+    First fallback when caller phones from unregistered number (softer check
+    than DOB — caller may not recall exact DOB but usually knows their ZIP).
+    Not LRU-cached.
+    """
+    last_name_norm = last_name.strip().lower()
+    zip_norm = re.sub(r"\D", "", zip_code)[:5]
+    if not zip_norm:
+        return None
+
+    def _fetch():
+        rows: list[list[Any]] = _open_sheet(_get_client(), SHEET_TAB_CALLERS).get_all_values()
+        for row in rows[1:]:
+            if len(row) < 9:
+                continue
+            if row[2].strip().lower() != last_name_norm:
+                continue
+            if re.sub(r"\D", "", row[8])[:5] == zip_norm:
+                return CallerRecord(
+                    phone=row[0],
+                    first_name=row[1],
+                    last_name=row[2],
+                    dob=row[3],
+                    claim_id=row[4],
+                    claim_status=row[5],
+                    docs_required=row[6],
+                    policy_number=row[7] if len(row) > 7 else "",
+                    zip_code=row[8],
+                )
+        return None
+
+    return _with_retry(_fetch, "lookup_by_name_zip")
 
 
 # ── Interaction log (write) ───────────────────────────────────────────────────

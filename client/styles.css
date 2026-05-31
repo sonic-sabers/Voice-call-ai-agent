@@ -708,7 +708,7 @@ h1 {
 
 .customer-caller-table {
   width: 100%;
-  min-width: 760px;
+  min-width: 860px;
   border-collapse: collapse;
 }
 
@@ -746,6 +746,18 @@ h1 {
 
 .customer-caller-table td.phone-cell {
   background: #fffde8;
+}
+
+.customer-caller-table td.docs-cell {
+  max-width: 160px;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.row-unknown td {
+  opacity: 0.55;
+  font-style: italic;
 }
 
 .field-label {
@@ -1040,6 +1052,34 @@ tr:hover td {
   background: #fff1f2;
   color: #be123c;
   border-color: #fecdd3;
+}
+
+/* Escalation reason badges */
+.badge-escalation-representative_requested {
+  background: #fffbeb;
+  color: #a16207;
+  border-color: #fde68a;
+}
+.badge-escalation-unsupported_question {
+  background: #f0f9ff;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+.badge-escalation-emergency {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.badge-escalation-verification_failed {
+  background: #fdf4ff;
+  color: #7e22ce;
+  border-color: #e9d5ff;
+}
+
+.drawer-meta-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-right: 4px;
 }
 
 .link {

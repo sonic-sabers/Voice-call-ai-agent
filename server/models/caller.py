@@ -12,3 +12,4 @@ class CallerRecord:
     claim_status: str
     docs_required: str
     policy_number: str = ""
+    zip_code: str = ""  # 5-digit ZIP — used for alternate verification only

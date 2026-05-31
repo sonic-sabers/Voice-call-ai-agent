@@ -22,7 +22,7 @@ from server.core.phone import normalize_phone
 from server.core.state import _set_with_touch, authenticated_calls, call_session, pending_callers, save_state
 from server.services.cove import compose_claim_response
 from server.services.kb import query_knowledge_base
-from server.services.sheets import lookup_caller
+from server.services.sheets import lookup_by_name_dob, lookup_by_name_zip, lookup_caller
 
 log = logging.getLogger(__name__)
 
@@ -42,12 +42,17 @@ def _normalize_dob(raw: str) -> str | None:
     """Spoken DOB → YYYY-MM-DD. Returns None if unparseable."""
     if not raw:
         return None
-    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw.strip()):
-        return raw.strip()
+    s = raw.strip()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
+        return s
+    # MM-DD only (caller gives just month/day, e.g. "07-23") — return as partial marker
+    if re.fullmatch(r"\d{1,2}-\d{2}", s):
+        m, d = s.split("-")
+        return f"MM-DD:{int(m):02d}-{int(d):02d}"
     try:
         from dateutil import parser as dateparser  # lazy import
 
-        dt = dateparser.parse(raw, dayfirst=False)
+        dt = dateparser.parse(s, dayfirst=False)
         return dt.strftime("%Y-%m-%d") if dt else None
     except Exception:
         return None
@@ -167,7 +172,12 @@ def _handle_verify_identity(tc_id: str, args: dict[str, Any], call_id: str) -> d
     except Exception as exc:
         log.exception("verify_identity lookup error: %s", exc)
         return {"toolCallId": tc_id, "result": _TOOL_ERROR_RESULT}
-    verified = record is not None and record.dob == dob
+    # Support partial MM-DD match (caller gave only month/day without year)
+    if dob and dob.startswith("MM-DD:"):
+        partial = dob[len("MM-DD:"):]  # "MM-DD"
+        verified = record is not None and record.dob[5:] == partial  # compare MM-DD suffix of YYYY-MM-DD
+    else:
+        verified = record is not None and record.dob == dob
     if verified:
         pending = pending_callers.get(call_id, {})
         caller_name = pending.get("caller_name", "Unknown")
@@ -187,6 +197,117 @@ def _handle_verify_identity(tc_id: str, args: dict[str, Any], call_id: str) -> d
             ),
         }
     return {"toolCallId": tc_id, "result": json.dumps({"verified": False})}
+
+
+def _handle_verify_by_name_dob(tc_id: str, args: dict[str, Any], call_id: str) -> dict[str, Any]:
+    """Alternate verification when caller phones from unregistered number.
+
+    Looks up by last_name + DOB (full YYYY-MM-DD or partial MM-DD).
+    On match, authenticates the call using the registered phone from the record.
+    """
+    last_name = args.get("lastName", "").strip()
+    dob_raw = args.get("dob", "")
+    if not last_name:
+        return {"toolCallId": tc_id, "result": json.dumps({"verified": False, "error": "MISSING_LAST_NAME"})}
+    dob = _normalize_dob(dob_raw)
+    if not dob:
+        return {"toolCallId": tc_id, "result": json.dumps({"verified": False, "error": "INVALID_DOB"})}
+
+    # Strip partial marker for lookup
+    dob_for_lookup = dob[len("MM-DD:"):] if dob.startswith("MM-DD:") else dob
+    is_partial = dob.startswith("MM-DD:")
+
+    try:
+        record = lookup_by_name_dob(last_name, dob_for_lookup)
+    except Exception as exc:
+        log.exception("verify_by_name_dob error: %s", exc)
+        return {"toolCallId": tc_id, "result": _TOOL_ERROR_RESULT}
+
+    if not record:
+        return {"toolCallId": tc_id, "result": json.dumps({"verified": False})}
+
+    caller_name = f"{record.first_name} {record.last_name}"
+    _set_with_touch(authenticated_calls, call_id, {"phone": record.phone})
+    _set_with_touch(call_session, call_id, {"phone": record.phone, "caller_name": caller_name})
+    save_state()
+    return {
+        "toolCallId": tc_id,
+        "result": json.dumps(
+            {
+                "verified": True,
+                "firstName": record.first_name,
+                "variableValues": {
+                    "authenticated": "true",
+                    "customer_name": _first_name(caller_name),
+                },
+            }
+        ),
+    }
+
+
+def _handle_verify_by_name_zip(tc_id: str, args: dict[str, Any], call_id: str) -> dict[str, Any]:
+    """First alternate verification step — last name + ZIP code.
+
+    Softer than DOB; used before falling back to DOB when phone not on file.
+    On match, authenticates using the registered phone from the record.
+    """
+    last_name = args.get("lastName", "").strip()
+    zip_code = args.get("zipCode", "").strip()
+    if not last_name:
+        return {"toolCallId": tc_id, "result": json.dumps({"verified": False, "error": "MISSING_LAST_NAME"})}
+    if not zip_code:
+        return {"toolCallId": tc_id, "result": json.dumps({"verified": False, "error": "MISSING_ZIP"})}
+    try:
+        record = lookup_by_name_zip(last_name, zip_code)
+    except Exception as exc:
+        log.exception("verify_by_name_zip error: %s", exc)
+        return {"toolCallId": tc_id, "result": _TOOL_ERROR_RESULT}
+    if not record:
+        return {"toolCallId": tc_id, "result": json.dumps({"verified": False})}
+    caller_name = f"{record.first_name} {record.last_name}"
+    _set_with_touch(authenticated_calls, call_id, {"phone": record.phone})
+    _set_with_touch(call_session, call_id, {"phone": record.phone, "caller_name": caller_name})
+    save_state()
+    return {
+        "toolCallId": tc_id,
+        "result": json.dumps(
+            {
+                "verified": True,
+                "firstName": record.first_name,
+                "variableValues": {
+                    "authenticated": "true",
+                    "customer_name": _first_name(caller_name),
+                },
+            }
+        ),
+    }
+
+
+def _handle_escalate(tc_id: str, args: dict[str, Any], call_id: str) -> dict[str, Any]:
+    """Log an escalation event server-side and return a structured ack.
+
+    Used for three trigger types:
+      - 'representative_requested' — caller asked for a human
+      - 'unsupported_question'     — question outside scope (payments, complaints, etc.)
+      - 'emergency'               — caller used emergency keywords (911, harm, suicide)
+
+    The actual call transfer is handled by transfer_to_agent (VAPI transferCall).
+    This tool exists to tag the call in server state so the end-of-call log
+    captures the escalation reason without relying on transcript parsing.
+    """
+    reason = args.get("reason", "unknown")
+    valid_reasons = {"representative_requested", "unsupported_question", "emergency"}
+    if reason not in valid_reasons:
+        reason = "unknown"
+    log.info("escalate: call_id=%s reason=%s", call_id, reason)
+    session = call_session.get(call_id, {})
+    session["escalation_reason"] = reason
+    _set_with_touch(call_session, call_id, session)
+    save_state()
+    return {
+        "toolCallId": tc_id,
+        "result": json.dumps({"logged": True, "reason": reason}),
+    }
 
 
 def _handle_answer_faq(tc_id: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -226,13 +347,20 @@ def _handle_compose_claim_response(tc_id: str, args: dict[str, Any], call_id: st
 # Tools that require the server-side call_id to read/write per-call state.
 # Kept separate so stateless tools (answer_faq) never receive a call_id arg.
 _CALL_ID_TOOLS = frozenset(
-    {"lookup_caller", "confirm_identity", "verify_identity", "compose_claim_response"}
+    {
+        "lookup_caller", "confirm_identity", "verify_identity",
+        "verify_by_name_zip", "verify_by_name_dob",
+        "escalate", "compose_claim_response",
+    }
 )
 
 _DISPATCH: dict[str, Any] = {
     "lookup_caller": _handle_lookup_caller,
     "confirm_identity": _handle_confirm_identity,
     "verify_identity": _handle_verify_identity,
+    "verify_by_name_zip": _handle_verify_by_name_zip,
+    "verify_by_name_dob": _handle_verify_by_name_dob,
+    "escalate": _handle_escalate,
     "answer_faq": _handle_answer_faq,
     "compose_claim_response": _handle_compose_claim_response,
 }

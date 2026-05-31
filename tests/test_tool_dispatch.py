@@ -241,3 +241,156 @@ class TestConfirmIdentityGuards:
         )
         result = json.loads(resp.json()["results"][0]["result"])
         assert result["confirmed"] is True
+
+
+class TestVerifyByNameDob:
+    """Alternate verification path for callers on unregistered phones."""
+
+    def test_verified_with_full_dob(self) -> None:
+        call_id = "call-name-dob-full"
+        with patch("server.services.tool_dispatch.lookup_by_name_dob", return_value=MAYA):
+            resp = client.post(
+                "/webhook/tool",
+                json=_tool_body("verify_by_name_dob", {"lastName": "Patel", "dob": "1987-09-14"}, call_id),
+                headers=HEADERS,
+            )
+        result = json.loads(resp.json()["results"][0]["result"])
+        assert result["verified"] is True
+        assert result["firstName"] == "Maya"
+        assert result["variableValues"]["authenticated"] == "true"
+
+    def test_verified_with_partial_mm_dd(self) -> None:
+        call_id = "call-name-dob-partial"
+        with patch("server.services.tool_dispatch.lookup_by_name_dob", return_value=MAYA):
+            resp = client.post(
+                "/webhook/tool",
+                json=_tool_body("verify_by_name_dob", {"lastName": "Patel", "dob": "09-14"}, call_id),
+                headers=HEADERS,
+            )
+        result = json.loads(resp.json()["results"][0]["result"])
+        assert result["verified"] is True
+
+    def test_not_verified_no_match(self) -> None:
+        call_id = "call-name-dob-nomatch"
+        with patch("server.services.tool_dispatch.lookup_by_name_dob", return_value=None):
+            resp = client.post(
+                "/webhook/tool",
+                json=_tool_body("verify_by_name_dob", {"lastName": "Moore", "dob": "07-23"}, call_id),
+                headers=HEADERS,
+            )
+        result = json.loads(resp.json()["results"][0]["result"])
+        assert result["verified"] is False
+
+    def test_missing_last_name_returns_error(self) -> None:
+        resp = client.post(
+            "/webhook/tool",
+            json=_tool_body("verify_by_name_dob", {"lastName": "", "dob": "07-23"}),
+            headers=HEADERS,
+        )
+        result = json.loads(resp.json()["results"][0]["result"])
+        assert result["verified"] is False
+        assert result["error"] == "MISSING_LAST_NAME"
+
+    def test_invalid_dob_returns_error(self) -> None:
+        resp = client.post(
+            "/webhook/tool",
+            json=_tool_body("verify_by_name_dob", {"lastName": "Moore", "dob": "not-a-date"}),
+            headers=HEADERS,
+        )
+        result = json.loads(resp.json()["results"][0]["result"])
+        assert result["verified"] is False
+        assert result["error"] == "INVALID_DOB"
+
+
+class TestVerifyByNameZip:
+    """ZIP-based alternate verification (first fallback after phone not found)."""
+
+    def test_verified_on_match(self) -> None:
+        call_id = "call-name-zip-match"
+        with patch("server.services.tool_dispatch.lookup_by_name_zip", return_value=MAYA):
+            resp = client.post(
+                "/webhook/tool",
+                json=_tool_body("verify_by_name_zip", {"lastName": "Patel", "zipCode": "95110"}, call_id),
+                headers=HEADERS,
+            )
+        result = json.loads(resp.json()["results"][0]["result"])
+        assert result["verified"] is True
+        assert result["firstName"] == "Maya"
+        assert result["variableValues"]["authenticated"] == "true"
+
+    def test_not_verified_no_match(self) -> None:
+        with patch("server.services.tool_dispatch.lookup_by_name_zip", return_value=None):
+            resp = client.post(
+                "/webhook/tool",
+                json=_tool_body("verify_by_name_zip", {"lastName": "Moore", "zipCode": "94101"}),
+                headers=HEADERS,
+            )
+        result = json.loads(resp.json()["results"][0]["result"])
+        assert result["verified"] is False
+
+    def test_missing_zip_returns_error(self) -> None:
+        resp = client.post(
+            "/webhook/tool",
+            json=_tool_body("verify_by_name_zip", {"lastName": "Moore", "zipCode": ""}),
+            headers=HEADERS,
+        )
+        result = json.loads(resp.json()["results"][0]["result"])
+        assert result["verified"] is False
+        assert result["error"] == "MISSING_ZIP"
+
+    def test_missing_last_name_returns_error(self) -> None:
+        resp = client.post(
+            "/webhook/tool",
+            json=_tool_body("verify_by_name_zip", {"lastName": "", "zipCode": "94101"}),
+            headers=HEADERS,
+        )
+        result = json.loads(resp.json()["results"][0]["result"])
+        assert result["verified"] is False
+        assert result["error"] == "MISSING_LAST_NAME"
+
+
+class TestEscalate:
+    """Escalation tagging — representative_requested, unsupported_question, emergency."""
+
+    def test_representative_requested(self) -> None:
+        call_id = "call-escalate-rep"
+        resp = client.post(
+            "/webhook/tool",
+            json=_tool_body("escalate", {"reason": "representative_requested"}, call_id),
+            headers=HEADERS,
+        )
+        result = json.loads(resp.json()["results"][0]["result"])
+        assert result["logged"] is True
+        assert result["reason"] == "representative_requested"
+
+    def test_emergency(self) -> None:
+        call_id = "call-escalate-emergency"
+        resp = client.post(
+            "/webhook/tool",
+            json=_tool_body("escalate", {"reason": "emergency"}, call_id),
+            headers=HEADERS,
+        )
+        result = json.loads(resp.json()["results"][0]["result"])
+        assert result["logged"] is True
+        assert result["reason"] == "emergency"
+
+    def test_unsupported_question(self) -> None:
+        call_id = "call-escalate-unsupported"
+        resp = client.post(
+            "/webhook/tool",
+            json=_tool_body("escalate", {"reason": "unsupported_question"}, call_id),
+            headers=HEADERS,
+        )
+        result = json.loads(resp.json()["results"][0]["result"])
+        assert result["logged"] is True
+        assert result["reason"] == "unsupported_question"
+
+    def test_invalid_reason_logged_as_unknown(self) -> None:
+        resp = client.post(
+            "/webhook/tool",
+            json=_tool_body("escalate", {"reason": "some_made_up_reason"}),
+            headers=HEADERS,
+        )
+        result = json.loads(resp.json()["results"][0]["result"])
+        assert result["logged"] is True
+        assert result["reason"] == "unknown"

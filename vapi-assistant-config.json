@@ -140,12 +140,115 @@
           },
           "description": "CoVe-verified claim status. Re-validates auth server-side using server call ID (do NOT pass callId). Returns exact pre-verified sentence to speak. MANDATORY after identity confirmed — never speak claim details without calling this."
         }
+      },
+      {
+        "type": "function",
+        "server": {
+          "url": "https://voice-call-ai-agent.onrender.com/webhook/tool",
+          "headers": {
+            "x-vapi-secret": "{{VAPI_WEBHOOK_SECRET}}"
+          }
+        },
+        "function": {
+          "name": "verify_by_name_zip",
+          "parameters": {
+            "type": "object",
+            "required": ["lastName", "zipCode"],
+            "properties": {
+              "lastName": {
+                "type": "string",
+                "description": "Caller's last name as spoken"
+              },
+              "zipCode": {
+                "type": "string",
+                "description": "5-digit ZIP code on the account as spoken by caller"
+              }
+            }
+          },
+          "description": "First alternate verification step when caller's phone is not on file. Checks last name + billing ZIP code. Returns {verified, firstName} on match. Use before asking for date of birth."
+        }
+      },
+      {
+        "type": "function",
+        "server": {
+          "url": "https://voice-call-ai-agent.onrender.com/webhook/tool",
+          "headers": {
+            "x-vapi-secret": "{{VAPI_WEBHOOK_SECRET}}"
+          }
+        },
+        "function": {
+          "name": "verify_by_name_dob",
+          "parameters": {
+            "type": "object",
+            "required": ["lastName", "dob"],
+            "properties": {
+              "lastName": {
+                "type": "string",
+                "description": "Caller's last name as spoken"
+              },
+              "dob": {
+                "type": "string",
+                "description": "Date of birth spoken by caller — full (YYYY-MM-DD) or partial month-day (MM-DD)"
+              }
+            }
+          },
+          "description": "Second alternate verification step when ZIP check fails. Searches by last name + date of birth. Accepts full DOB (YYYY-MM-DD) or partial month-day (MM-DD). Returns {verified, firstName} on success. DOB never echoed back."
+        }
+      },
+      {
+        "type": "function",
+        "server": {
+          "url": "https://voice-call-ai-agent.onrender.com/webhook/tool",
+          "headers": {
+            "x-vapi-secret": "{{VAPI_WEBHOOK_SECRET}}"
+          }
+        },
+        "function": {
+          "name": "escalate",
+          "parameters": {
+            "type": "object",
+            "required": ["reason"],
+            "properties": {
+              "reason": {
+                "type": "string",
+                "enum": ["representative_requested", "unsupported_question", "emergency"],
+                "description": "Why this call is being escalated"
+              }
+            }
+          },
+          "description": "Tag the call server-side with an escalation reason before transferring. Call this FIRST, then call transfer_to_agent. Reasons: 'representative_requested' (caller asked for human), 'unsupported_question' (out-of-scope request), 'emergency' (safety keywords detected)."
+        }
+      },
+      {
+        "type": "transferCall",
+        "destinations": [
+          {
+            "type": "number",
+            "number": "+18005550199",
+            "message": "Transferring you to a specialist now. They'll have my notes so you won't need to repeat yourself.",
+            "description": "Live agent queue"
+          }
+        ],
+        "function": {
+          "name": "transfer_to_agent",
+          "description": "Transfer caller to a live human representative. Always call escalate() first to tag the reason. Use after all verification attempts fail, when caller requests a human, for out-of-scope requests, or for emergencies.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string",
+                "description": "Short reason for transfer, e.g. 'verification_failed' or 'caller_requested'"
+              }
+            },
+            "required": ["reason"]
+          }
+        }
       }
     ],
     "messages": [
       {
         "role": "system",
-        "content": "You are Aria, a calm, empathetic, and professional Claims Support Assistant for Observe Insurance.\n\nTone: Warm, reassuring, patient, and human-like. Speak clearly and never rush. Keep responses to 1-2 sentences — callers are often stressed; be brief and human.\n\n## Core Rules\n- Never read tool names, function names, parameters, or tool result metadata aloud.\n- Authentication is mandatory before any claim information.\n- Use tools for all facts. Never guess customer data or claim details.\n- After identity confirmed, ALWAYS call compose_claim_response(phone) and speak ONLY the exact 'response' text it returns. Do not paraphrase.\n- Emergency words (911, emergency, harm, suicide): Say 'Please hang up and dial 911 immediately.' Then end the call.\n- Caller requests a human: 'Of course — I\\'ll arrange a callback from a specialist within one business day.' End call politely.\n\n## Authentication Flow (follow exactly, never skip or reorder)\n\nSTEP 1: Ask for phone number.\n  → 'Could I get your phone number so I can pull up your account?'\n  → STOP. Wait for caller.\n\nSTEP 2: Call lookup_caller(phone). STOP. Wait for result.\n\nSTEP 3a — found: true:\n  → Say: 'Am I speaking with [firstName] [lastName]?'\n  → STOP. Wait for caller.\n  → YES → call confirm_identity(phone). STOP. Wait for result.\n    → confirmed: true → go to STEP 5.\n  → NO → 'No problem — could I get your date of birth instead?'\n    → STOP. Wait for caller.\n    → Call verify_identity(phone, dob). STOP. Wait for result.\n    → verified: true → go to STEP 5.\n    → verified: false → 'I wasn\\'t able to verify the account. I\\'ll have a specialist follow up with you shortly.' End call.\n\nSTEP 3b — found: false:\n  → 'I wasn\\'t able to find an account with that number. Could you double-check and try again?'\n  → STOP. Wait for caller. Retry once.\n  → Still not found → 'I\\'m sorry I couldn\\'t locate it. A specialist will reach out to you shortly.' End call.\n\nSTEP 5: Call compose_claim_response(phone). STOP. Wait for result. Speak ONLY the exact 'response' field text.\n\nSTEP 6: 'Is there anything else I can help you with today?' Use answer_faq for any follow-up questions.\n\nSTEP 7: 'Thank you for calling Observe Insurance. Take care!'\n\n## Conversation Handling\n- Didn't catch that: 'Sorry, I didn\\'t catch that — could you repeat it for me?'\n- Barge-in / interruption: Stop immediately, acknowledge, resume.\n- Silence >8 s: 'Still there? I\\'m here whenever you\\'re ready.'\n- Caller sounds upset/frustrated: 'I completely understand how stressful this can be. Let me take care of this for you.' Offer callback if tension continues.\n- Out-of-scope (payments, complaints): 'I can help with claim status and documents. For everything else, a specialist can assist you best.'\n\n## Guardrails\n- Never speak full phone numbers, DOB, or any PII back to the caller.\n- Claim status comes ONLY from compose_claim_response. Never use memory or prior results.\n- Never invent claim IDs, statuses, or document requirements.\n- Tool error: 'I\\'m having a temporary issue on my end. A representative will follow up with you shortly.'"
+        "content": "You are Aria, a calm, empathetic, and professional Claims Support Assistant for Observe Insurance.\n\nTone: Warm, reassuring, patient, and human-like. Speak clearly and never rush. Keep responses to 1-2 sentences — callers are often stressed; be brief and human.\n\n## Core Rules\n- Never read tool names, function names, parameters, or tool result metadata aloud.\n- Authentication is mandatory before any claim information.\n- Use tools for all facts. Never guess customer data or claim details.\n- After identity confirmed, ALWAYS call compose_claim_response(phone) and speak ONLY the exact 'response' text it returns. Do not paraphrase.\n\n## Authentication Flow (follow exactly, never skip or reorder)\n\nSTEP 1: Ask for phone number.\n  → 'Could I get your phone number so I can pull up your account?'\n  → STOP. Wait for caller.\n\nSTEP 2: Call lookup_caller(phone). STOP. Wait for result.\n\nSTEP 3a — found: true:\n  → Say: 'Am I speaking with [firstName] [lastName]?'\n  → STOP. Wait for caller.\n  → YES → call confirm_identity(phone). STOP. Wait for result.\n    → confirmed: true → go to STEP 5.\n  → NO → 'No problem — could I get your date of birth instead?'\n    → STOP. Wait for caller.\n    → Call verify_identity(phone, dob). STOP. Wait for result.\n    → verified: true → go to STEP 5.\n    → verified: false → go to STEP 4 (transfer, reason='verification_failed').\n\nSTEP 3b — found: false (phone not on file — caller may be calling from a different number):\n  → 'I wasn\\'t able to find an account with that number — you may be calling from a different phone. Let me verify you another way.'\n  → 'Could I get your last name and the ZIP code on your policy?'\n  → STOP. Wait for caller.\n  → Call verify_by_name_zip(lastName, zipCode). STOP. Wait for result.\n    → verified: true → say 'Got it, [firstName] — one moment.' → go to STEP 5.\n    → verified: false → 'I wasn\\'t able to match that. Let me try one more way — could I get your date of birth?'\n      → STOP. Wait for caller.\n      → Call verify_by_name_dob(lastName, dob). STOP. Wait for result.\n      → verified: true → say 'Got it, [firstName] — one moment.' → go to STEP 5.\n      → verified: false → 'I wasn\\'t able to verify the account. For your privacy, I can connect you with a specialist who can assist further.'\n        → Ask: 'Would you like me to transfer you now?'\n        → STOP. Wait for caller.\n        → YES or any affirmative → go to STEP 4 (reason='verification_failed').\n        → NO → 'Of course. You\\'re welcome to call back anytime. Take care!'\n\nSTEP 4 — Transfer to live agent:\n  → Call escalate(reason) FIRST. STOP. Wait for result.\n  → Say the appropriate transfer message (see Escalation section).\n  → Call transfer_to_agent(reason). STOP.\n\nSTEP 5: Call compose_claim_response(phone). STOP. Wait for result. Speak ONLY the exact 'response' field text.\n\nSTEP 6: 'Is there anything else I can help you with today?' Use answer_faq for any follow-up questions.\n\nSTEP 7: 'Thank you for calling Observe Insurance. Take care!'\n\n## Escalation Handling\n\n### Caller Requests a Representative\nTrigger: caller says 'agent', 'human', 'representative', 'real person', 'speak to someone', or similar.\n  → Say: 'Of course — I\\'ll connect you with a specialist now. They\\'ll have my notes so you won\\'t need to repeat yourself.'\n  → Call escalate(reason='representative_requested'). STOP.\n  → Call transfer_to_agent(reason='representative_requested'). STOP.\n\n### Unsupported Questions\nTrigger: caller asks about payments, billing, complaints, policy changes, coverage disputes, legal matters, or anything outside claim status and FAQ topics.\n  → Say: 'I can help with claim status, documents, and general questions. For [topic], a specialist is best placed to assist — would you like me to connect you?'\n  → STOP. Wait for caller.\n  → YES → Call escalate(reason='unsupported_question'). STOP. Call transfer_to_agent(reason='unsupported_question'). STOP.\n  → NO → 'Of course — is there anything else I can help you with regarding your claim?'\n\n### Emergency Situations\nTrigger: caller uses ANY of these words or phrases: 911, emergency, hurt, harm, suicide, kill, crisis, danger, self-harm, overdose, or expresses immediate risk to themselves or others.\n  → Interrupt immediately. Say (verbatim): 'Please hang up and call 911 immediately. Emergency services can help you right now.'\n  → Call escalate(reason='emergency'). STOP.\n  → End the call.\n  → Do NOT continue the conversation. Do NOT attempt to verify identity or discuss claims.\n\n## Conversation Handling\n- Didn't catch that: 'Sorry, I didn\\'t catch that — could you repeat it for me?'\n- Barge-in / interruption: Stop immediately, acknowledge, resume.\n- Silence >8 s: 'Still there? I\\'m here whenever you\\'re ready.'\n- Caller sounds upset/frustrated: 'I completely understand how stressful this can be. Let me take care of this for you.' Offer transfer if tension continues.\n\n## Guardrails\n- Never speak full phone numbers, DOB, ZIP code, or any PII back to the caller.\n- Claim status comes ONLY from compose_claim_response. Never use memory or prior results.\n- Never invent claim IDs, statuses, or document requirements.\n- Tool error: 'I\\'m having a temporary issue on my end. A representative will follow up with you shortly.'"
       }
     ],
     "provider": "anthropic",

@@ -15,19 +15,23 @@ Inbound claims-support voice agent for Observe Insurance - authentication, claim
 
 ## Demo Callers
 
-| Phone | Name | Claim | Status | Policy |
-| --- | --- | --- | --- | --- |
-| `+14085550192` | Maya Patel | `CLM-2847` | approved | `POL-100192` |
-| `+13125550371` | Carlos Rivera | `CLM-3105` | requires documentation | `POL-100371` |
-| `+17145550884` | Amara Okonkwo | `CLM-4422` | pending | `POL-100884` |
+| Phone | Name | Claim | Status | Policy | ZIP |
+| --- | --- | --- | --- | --- | --- |
+| `+14085550192` | Maya Patel | `CLM-2847` | approved | `POL-100192` | `95110` |
+| `+13125550371` | Carlos Rivera | `CLM-3105` | requires documentation | `POL-100371` | `60601` |
+| `+17145550884` | Amara Okonkwo | `CLM-4422` | pending | `POL-100884` | `92801` |
 
 **Demo flows:**
 
-1. **Happy path** - call as Maya Patel, authenticate, get claim status, ask an FAQ, close
-2. **Documentation flow** - call as Carlos Rivera, get claim status → agent provides doc submission instructions
-3. **Auth failure** - provide wrong name three times → lockout and graceful end
-4. **Customer not found** - provide a phone not in the sheet → not-found branch
-5. **Escalation** - say "I want to speak to a representative" at any point
+1. **Happy path** — call as Maya Patel, authenticate by name, get claim status, ask an FAQ, close
+2. **Documentation flow** — call as Carlos Rivera, auth → agent delivers doc submission instructions
+3. **Alternate phone (ZIP)** — call from an unknown number, give last name + correct ZIP → verified
+4. **Alternate phone (DOB)** — call from unknown number, ZIP fails, give month-day DOB → verified
+5. **Full verification failure** — all three checks fail → offered transfer → routed to live agent with notes
+6. **Escalation — representative** — say "I want to speak to a representative" → immediate tagged transfer
+7. **Escalation — unsupported question** — ask about billing/payments → polite redirect + transfer offer
+8. **Emergency** — say any safety keyword → verbatim 911 redirect, call ends immediately
+9. **Auth failure** — wrong name + wrong DOB on registered phone → lockout, graceful end
 
 ## Screenshots
 
@@ -48,16 +52,17 @@ Inbound claims-support voice agent for Observe Insurance - authentication, claim
 | Feature | Implementation |
 | --- | --- |
 | Greeting & authentication | VAPI agent greets, collects phone, looks up caller in Google Sheets, confirms identity by name or DOB |
-| Claim status | `compose_claim_response` implements CoVe (Dhuliawala et al. 2023) - re-fetches + validates server-side before speaking. Claim data never reaches LLM until auth passes. |
+| Alternate phone verification | 3-step fallback when caller phones from unregistered number: name+ZIP (`verify_by_name_zip`) → name+DOB (`verify_by_name_dob`) → transfer with notes |
+| Claim status | `compose_claim_response` implements CoVe (Dhuliawala et al. 2023) — re-fetches + validates server-side before speaking. Claim data never reaches LLM until auth passes. |
 | Documentation instructions | Injected into claim response when status is `requires_documentation` |
-| FAQ support | `answer_faq` tool - office hours, mailing address, new claim process, general claims info |
-| Escalation & safety | Escalation path to live representative; graceful handling of unsupported questions and emergency language |
-| Post-call logging | `call-end` webhook writes caller name, summary, sentiment, and timestamp back to Google Sheets |
+| FAQ support | `answer_faq` tool — office hours, mailing address, new claim process, general claims info |
+| Representative escalation | `escalate(reason='representative_requested')` tags call server-side → `transfer_to_agent` routes to live queue with notes pre-populated |
+| Unsupported question handling | Out-of-scope requests (billing, payments, complaints) → polite redirect + offered transfer → `escalate(reason='unsupported_question')` if accepted |
+| Emergency handling | Any safety keyword (911, harm, suicide, crisis) → verbatim 911 redirect → `escalate(reason='emergency')` → call ends; LLM does not continue |
+| Post-call logging | `call-end` webhook writes caller name, summary, sentiment, escalation reason, and timestamp back to Google Sheets |
 | Happy path | Auth → claim status → FAQ → close |
-| Auth failure flow | Three-strike lockout, call ends gracefully |
-| Customer not found | Distinct message, offered to re-enter or escalate |
-| Escalation flow | Transfers to representative queue |
-| Multi-agent (bonus) | VAPI squad - triage agent (auth) → claims agent (status + FAQ) |
+| Auth failure flow | Wrong name + wrong DOB → lockout, call ends gracefully |
+| Multi-agent (bonus) | VAPI squad — triage agent (auth) → claims agent (status + FAQ) |
 | Knowledge base (bonus) | Airtable FAQ table via `pyairtable` |
 
 ## Research Implementation - Chain-of-Verification (CoVe)
@@ -102,11 +107,15 @@ Five server-side tools are called during a conversation. Every tool returns a JS
 
 | Tool | Arguments | Returns | Notes |
 | --- | --- | --- | --- |
-| `lookup_caller` | `phone: str` | `{found, firstName, lastName}` | Normalizes to E.164 before lookup. Returns identity fields **only** - claim data withheld pre-auth. Stores `{phone, caller_name}` in server-side `pending_callers`. |
-| `confirm_identity` | `phone: str` | `{confirmed, variableValues: {authenticated, customer_name}}` | Verifies the phone matches the earlier `lookup_caller` result server-side. On success, promotes call to `authenticated_calls`. LLM never decides auth - it only receives the boolean. |
-| `verify_identity` | `phone: str`, `dob: str` | `{verified, variableValues: {authenticated, customer_name}}` | Alternative auth path (DOB instead of name). DOB is compared server-side and **never returned** to the LLM context. Accepts spoken dates ("April third nineteen ninety-two") via `python-dateutil`. |
-| `answer_faq` | `question: str` | Plain-text answer string | Queries Airtable by keyword tag match. Falls back to a canned support string if no tag matches or Airtable is unreachable. |
-| `compose_claim_response` | `phone: str`, `callId: str` | `{safeToSpeak: bool, response: str}` | Runs the full CoVe pipeline (re-fetch + validate + compose). LLM speaks `response` verbatim only when `safeToSpeak` is `true`. Uses server-side `call_id`, not the LLM-provided `callId` argument (template vars are unreliable). |
+| `lookup_caller` | `phone: str` | `{found, firstName, lastName}` | Normalizes to E.164 before lookup. Returns identity fields **only** — claim data withheld pre-auth. Stores `{phone, caller_name}` in server-side `pending_callers`. |
+| `confirm_identity` | `phone: str` | `{confirmed, variableValues: {authenticated, customer_name}}` | Verifies phone matches the earlier `lookup_caller` result server-side. On success, promotes call to `authenticated_calls`. LLM only receives the boolean. |
+| `verify_identity` | `phone: str`, `dob: str` | `{verified, variableValues: {authenticated, customer_name}}` | Alt auth path (DOB instead of name). DOB compared server-side, never returned to LLM. Accepts spoken dates or partial MM-DD via `python-dateutil`. |
+| `verify_by_name_zip` | `lastName: str`, `zipCode: str` | `{verified, firstName, variableValues}` | First alternate verification when caller phones from unregistered number. Scans all records by last name + 5-digit ZIP. Authenticates using registered phone from matched record. |
+| `verify_by_name_dob` | `lastName: str`, `dob: str` | `{verified, firstName, variableValues}` | Second alternate verification (after ZIP fails). Accepts full YYYY-MM-DD or partial MM-DD. DOB never returned to LLM. |
+| `escalate` | `reason: str` | `{logged, reason}` | Tags call server-side before any transfer. Reasons: `representative_requested`, `unsupported_question`, `emergency`. Captured in call_session so post-call log records escalation type. |
+| `transfer_to_agent` | `reason: str` | VAPI transferCall | Routes caller to live agent queue. Always call `escalate()` first. |
+| `answer_faq` | `question: str` | Plain-text answer string | Queries Airtable by keyword tag match. Falls back to canned support string if no match or Airtable unreachable. |
+| `compose_claim_response` | `phone: str` | `{safeToSpeak: bool, response: str}` | Runs full CoVe pipeline (re-fetch + validate + compose). LLM speaks `response` verbatim only when `safeToSpeak` is `true`. Uses server-side `call_id`, not LLM-provided `callId` (template vars unreliable). |
 
 ### Tool dispatch flow
 

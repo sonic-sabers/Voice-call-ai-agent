@@ -34,8 +34,9 @@ const CALLER_PROFILES = {
     dob: "1987-09-14",
     claim_id: "CLM-2847",
     claim_status: "approved",
-    docs_required: "Not available",
+    docs_required: "—",
     policy_number: "POL-100192",
+    zip_code: "95110",
   },
   "+13125550371": {
     phone: "+13125550371",
@@ -43,9 +44,10 @@ const CALLER_PROFILES = {
     last_name: "Rivera",
     dob: "1992-04-03",
     claim_id: "CLM-3105",
-    claim_status: "requires documentation",
-    docs_required: "radiology report",
+    claim_status: "requires_documentation",
+    docs_required: "radiology report, treating physician statement",
     policy_number: "POL-100371",
+    zip_code: "60601",
   },
   "+17145550884": {
     phone: "+17145550884",
@@ -54,8 +56,9 @@ const CALLER_PROFILES = {
     dob: "1979-11-28",
     claim_id: "CLM-4422",
     claim_status: "pending",
-    docs_required: "Not available",
+    docs_required: "—",
     policy_number: "POL-100884",
+    zip_code: "92801",
   },
 };
 
@@ -222,8 +225,17 @@ function openDrawer(row, autoPlay = false) {
   sentimentEl.className = `badge badge-${esc(row.sentiment)}`;
 
   const outcomeEl = document.getElementById("drawer-outcome");
-  outcomeEl.textContent = (row.outcome || "").replace("_", " ");
+  outcomeEl.textContent = (row.outcome || "").replace(/_/g, " ");
   outcomeEl.className = `badge badge-${esc(row.outcome)}`;
+
+  const escalationEl = document.getElementById("drawer-escalation");
+  const escalationWrap = document.getElementById("drawer-escalation-wrap");
+  if (row.escalation_reason && escalationEl && escalationWrap) {
+    escalationEl.textContent = row.escalation_reason.replace(/_/g, " ");
+    escalationWrap.style.display = "";
+  } else if (escalationWrap) {
+    escalationWrap.style.display = "none";
+  }
 
   document.getElementById("drawer-summary").textContent =
     row.summary || "No summary available.";
@@ -720,6 +732,7 @@ function renderCustomerLoadingState() {
       <td><div class="skeleton" style="width:76px;height:13px"></div></td>
       <td><div class="skeleton" style="width:84px;height:13px"></div></td>
       <td><div class="skeleton" style="width:84px;height:13px"></div></td>
+      <td><div class="skeleton" style="width:56px;height:13px"></div></td>
       <td><div class="skeleton" style="width:124px;height:13px"></div></td>
       <td><div class="skeleton" style="width:92px;height:13px"></div></td>
       <td><div class="skeleton" style="width:94px;height:13px"></div></td>
@@ -755,6 +768,7 @@ function renderLoadingState() {
         <td><div class="skeleton" style="width:260px;height:12px"></div></td>
         <td><div class="skeleton" style="width:60px;height:12px"></div></td>
         <td><div class="skeleton" style="width:80px;height:12px"></div></td>
+        <td><div class="skeleton" style="width:100px;height:12px"></div></td>
         <td><div class="skeleton" style="width:20px;height:20px;border-radius:999px;margin-left:2px"></div></td>
       </tr>`;
     tbody.innerHTML = Array.from({ length: 10 }).map(row).join("");
@@ -845,12 +859,12 @@ async function load() {
 
     const customerBody = document.getElementById("customer-caller-body");
     if (customerBody) {
-      customerBody.innerHTML = `<tr><td colspan="8" class="empty">${isTimeout ? "No response yet. Try Refresh in a few seconds." : "Failed to load caller details. Please refresh."}</td></tr>`;
+      customerBody.innerHTML = `<tr><td colspan="9" class="empty">${isTimeout ? "No response yet. Try Refresh in a few seconds." : "Failed to load caller details. Please refresh."}</td></tr>`;
     }
 
     const tableBody = document.getElementById("table-body");
     if (tableBody) {
-      tableBody.innerHTML = `<tr><td colspan="6" class="empty">${isTimeout ? "No response from server yet. Click Refresh after a few seconds." : "Failed to load interactions. Check backend and click Refresh."}</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="7" class="empty">${isTimeout ? "No response from server yet. Click Refresh after a few seconds." : "Failed to load interactions. Check backend and click Refresh."}</td></tr>`;
     }
     document.getElementById("pagination").innerHTML = "";
     renderDashboardErrorState(
@@ -878,19 +892,32 @@ function render(rows) {
   const escalated = rows.filter((r) => r.outcome === "escalated").length;
   const authFailed = rows.filter((r) => r.outcome === "auth_failed").length;
   const containment = total > 0 ? Math.round((resolved / total) * 100) : 0;
+  const repRequested = rows.filter((r) => r.escalation_reason === "representative_requested").length;
+  const emergency = rows.filter((r) => r.escalation_reason === "emergency").length;
+  const unsupported = rows.filter((r) => r.escalation_reason === "unsupported_question").length;
+  const verificationFailed = rows.filter((r) => r.escalation_reason === "verification_failed").length;
+
+  const escalationSub = escalated > 0
+    ? [
+        repRequested ? `${repRequested} rep requested` : "",
+        verificationFailed ? `${verificationFailed} verify failed` : "",
+        unsupported ? `${unsupported} unsupported` : "",
+        emergency ? `${emergency} emergency` : "",
+      ].filter(Boolean).join(" · ") || `${pct(escalated, total)}% of calls`
+    : "none this period";
 
   const stats = [
     { title: "Total Calls", value: total, sub: "all time", bar: null },
     {
       title: "Containment Rate",
       value: `${containment}%`,
-      sub: `${resolved} resolved`,
+      sub: `${resolved} resolved without escalation`,
       bar: containment,
     },
     {
       title: "Escalated",
       value: escalated,
-      sub: `${pct(escalated, total)}% of calls`,
+      sub: escalationSub,
       bar: null,
     },
     {
@@ -926,14 +953,19 @@ function renderCustomerView(rows) {
   const verifyEl = document.getElementById("customer-verify");
   const chipEl = document.getElementById("selected-caller-chip");
   if (selected) {
-    verifyEl.textContent = `Confirm ${selected.first_name} ${selected.last_name} and DOB ${selected.dob}`;
+    verifyEl.textContent = `Confirm ${selected.first_name} ${selected.last_name} — DOB ${selected.dob} — ZIP ${selected.zip_code}`;
     chipEl.textContent = `Selected: ${selected.first_name} ${selected.last_name} (${formatPhone(selected.phone)})`;
     chipEl.style.display = "";
   } else {
     verifyEl.textContent =
-      "The agent will ask to confirm identity during the call.";
+      "Agent confirms identity by name, ZIP, or DOB during the call.";
     chipEl.style.display = "none";
   }
+
+  const statusBadge = (status) => {
+    const cls = status === "approved" ? "resolved" : status === "pending" ? "neutral" : "escalated";
+    return `<span class="badge badge-${cls}">${status.replace("_", " ")}</span>`;
+  };
 
   const rowsHtml = Object.values(CALLER_PROFILES)
     .map((caller) => {
@@ -945,24 +977,19 @@ function renderCustomerView(rows) {
         <td>${caller.last_name}</td>
         <td>${caller.dob}</td>
         <td>${caller.claim_id}</td>
-        <td>${caller.claim_status}</td>
-        <td>${caller.docs_required || "Not available"}</td>
-        <td>${caller.policy_number || "Not available"}</td>
+        <td>${statusBadge(caller.claim_status)}</td>
+        <td>${caller.zip_code || "—"}</td>
+        <td class="docs-cell">${caller.docs_required || "—"}</td>
+        <td>${caller.policy_number || "—"}</td>
       </tr>
     `;
     })
     .join("");
 
   const unknownRow = `
-    <tr>
+    <tr class="row-unknown">
       <td class="phone-cell"><span class="phone-number">${formatPhone(UNKNOWN_CALLER_PHONE)}</span></td>
-      <td>Not available</td>
-      <td>Not available</td>
-      <td>Not available</td>
-      <td>Not available</td>
-      <td>Not available</td>
-      <td>Not available</td>
-      <td>Not available</td>
+      <td colspan="8" class="muted">Not on file — triggers alternate verification flow</td>
     </tr>
   `;
 
@@ -975,7 +1002,7 @@ function renderPage() {
   const tbody = document.getElementById("table-body");
 
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">No calls yet. Make a test call to see data here.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">No calls yet. Make a test call to see data here.</td></tr>`;
     document.getElementById("pagination").innerHTML = "";
     return;
   }
@@ -996,6 +1023,9 @@ function renderPage() {
            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"/></svg>
          </button>`
         : `<span class="muted">Not available</span>`;
+      const escalationCell = r.escalation_reason
+        ? `<span class="badge badge-escalation-${esc(r.escalation_reason)}">${esc(r.escalation_reason).replace(/_/g, " ")}</span>`
+        : `<span class="muted">—</span>`;
       return `
       <tr class="clickable-row" data-idx="${globalIdx}">
         <td class="time-cell">${ts}</td>
@@ -1005,7 +1035,8 @@ function renderPage() {
         </td>
         <td><div class="summary-clickable" title="Click to view details">${esc(r.summary)}</div></td>
         <td><span class="badge badge-${esc(r.sentiment)}">${esc(r.sentiment)}</span></td>
-        <td><span class="badge badge-${esc(r.outcome)}">${esc(r.outcome).replace("_", " ")}</span></td>
+        <td><span class="badge badge-${esc(r.outcome)}">${esc(r.outcome).replace(/_/g, " ")}</span></td>
+        <td>${escalationCell}</td>
         <td>${playCell}</td>
       </tr>
     `;
