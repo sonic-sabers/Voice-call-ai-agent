@@ -7,7 +7,10 @@ const ESCALATION_LABELS = {
   emergency: "Emergency",
 };
 function escalationLabel(reason) {
-  return ESCALATION_LABELS[reason] || reason.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return (
+    ESCALATION_LABELS[reason] ||
+    reason.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  );
 }
 function capitalize(str) {
   if (!str) return "";
@@ -265,18 +268,23 @@ function openDrawer(row, autoPlay = false) {
   // Audio player
   const player = document.getElementById("audio-player");
   if (row.recording_url) {
-    document.getElementById("ap-play").innerHTML = playIcon();
-    document.getElementById("ap-fill").style.width = "0%";
-    document.getElementById("ap-thumb").style.left = "0%";
-    document.getElementById("ap-current").textContent = "0:00";
-    document.getElementById("ap-duration").textContent = "0:00";
+    // Playback UI intentionally disabled until dashboard auth is re-enabled.
+    // document.getElementById("ap-play").innerHTML = playIcon();
+    // document.getElementById("ap-fill").style.width = "0%";
+    // document.getElementById("ap-thumb").style.left = "0%";
+    // document.getElementById("ap-current").textContent = "0:00";
+    // document.getElementById("ap-duration").textContent = "0:00";
+    // player.style.display = "";
+
+    // if (autoPlay) initAudioPlayer(row.recording_url);
+    // else {
+    //   stopAudio();
+    //   document.getElementById("ap-play").onclick = () =>
+    //     initAudioPlayer(row.recording_url);
+    // }
+    stopAudio();
     player.style.display = "";
-    if (autoPlay) initAudioPlayer(row.recording_url);
-    else {
-      stopAudio();
-      document.getElementById("ap-play").onclick = () =>
-        initAudioPlayer(row.recording_url);
-    }
+    showAudioError("Authentication is required to play this recording.");
   } else {
     player.style.display = "none";
     stopAudio();
@@ -329,7 +337,7 @@ let _callTimerInterval = null;
 let _callStartTime = null;
 let _muted = false;
 let _speakerOn = true;
-let _vapiAudioEls = [];  // audio elements created by VAPI/Daily during a call
+let _vapiAudioEls = []; // audio elements created by VAPI/Daily during a call
 let _audioObserver = null;
 
 function startCallTimer() {
@@ -369,9 +377,17 @@ window.toggleMute = function toggleMute() {
 
 function applyVolumeToCallAudio(volume) {
   // Apply to any audio elements we tracked during the call
-  _vapiAudioEls.forEach((el) => { try { el.volume = volume; } catch {} });
+  _vapiAudioEls.forEach((el) => {
+    try {
+      el.volume = volume;
+    } catch {}
+  });
   // Also sweep all audio elements in case we missed any
-  document.querySelectorAll("audio").forEach((el) => { try { el.volume = volume; } catch {} });
+  document.querySelectorAll("audio").forEach((el) => {
+    try {
+      el.volume = volume;
+    } catch {}
+  });
 }
 
 function startAudioObserver() {
@@ -489,7 +505,8 @@ function updateMicPermissionUI() {
   const micPermissionBtn = document.getElementById("mic-permission-btn");
   if (!micPermissionBtn) return;
   // Only show "Enable Microphone" button after a denied check — never block Start Call
-  micPermissionBtn.style.display = _micPermission === "denied" ? "inline-flex" : "none";
+  micPermissionBtn.style.display =
+    _micPermission === "denied" ? "inline-flex" : "none";
 }
 
 async function refreshMicPermission(requestPrompt = false) {
@@ -914,19 +931,30 @@ function render(rows) {
   const escalated = rows.filter((r) => r.outcome === "escalated").length;
   const authFailed = rows.filter((r) => r.outcome === "auth_failed").length;
   const containment = total > 0 ? Math.round((resolved / total) * 100) : 0;
-  const repRequested = rows.filter((r) => r.escalation_reason === "representative_requested").length;
-  const emergency = rows.filter((r) => r.escalation_reason === "emergency").length;
-  const unsupported = rows.filter((r) => r.escalation_reason === "unsupported_question").length;
-  const verificationFailed = rows.filter((r) => r.escalation_reason === "verification_failed").length;
+  const repRequested = rows.filter(
+    (r) => r.escalation_reason === "representative_requested",
+  ).length;
+  const emergency = rows.filter(
+    (r) => r.escalation_reason === "emergency",
+  ).length;
+  const unsupported = rows.filter(
+    (r) => r.escalation_reason === "unsupported_question",
+  ).length;
+  const verificationFailed = rows.filter(
+    (r) => r.escalation_reason === "verification_failed",
+  ).length;
 
-  const escalationSub = escalated > 0
-    ? [
-        repRequested ? `${repRequested} rep requested` : "",
-        verificationFailed ? `${verificationFailed} verify failed` : "",
-        unsupported ? `${unsupported} unsupported` : "",
-        emergency ? `${emergency} emergency` : "",
-      ].filter(Boolean).join(" · ") || `${pct(escalated, total)}% of calls`
-    : "none this period";
+  const escalationSub =
+    escalated > 0
+      ? [
+          repRequested ? `${repRequested} rep requested` : "",
+          verificationFailed ? `${verificationFailed} verify failed` : "",
+          unsupported ? `${unsupported} unsupported` : "",
+          emergency ? `${emergency} emergency` : "",
+        ]
+          .filter(Boolean)
+          .join(" · ") || `${pct(escalated, total)}% of calls`
+      : "none this period";
 
   const stats = [
     { title: "Total Calls", value: total, sub: "all time", bar: null },
@@ -985,7 +1013,12 @@ function renderCustomerView(rows) {
   }
 
   const statusBadge = (status) => {
-    const cls = status === "approved" ? "resolved" : status === "pending" ? "neutral" : "escalated";
+    const cls =
+      status === "approved"
+        ? "resolved"
+        : status === "pending"
+          ? "neutral"
+          : "escalated";
     return `<span class="badge badge-${cls}">${status.replace("_", " ")}</span>`;
   };
 
@@ -1040,10 +1073,14 @@ function renderPage() {
     .map((r, i) => {
       const globalIdx = start + i;
       const ts = formatTime(r.timestamp);
+      // Playback button intentionally disabled until dashboard auth is re-enabled.
+      // const playCell = r.recording_url
+      //   ? `<button class="row-play-btn" data-idx="${globalIdx}" aria-label="Play recording" onclick="event.stopPropagation()">
+      //      <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"/></svg>
+      //    </button>`
+      //   : `<span class="muted">Not available</span>`;
       const playCell = r.recording_url
-        ? `<button class="row-play-btn" data-idx="${globalIdx}" aria-label="Play recording" onclick="event.stopPropagation()">
-           <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"/></svg>
-         </button>`
+        ? `<span class="muted">Auth required</span>`
         : `<span class="muted">Not available</span>`;
       const escalationCell = r.escalation_reason
         ? `<span class="badge badge-escalation-${esc(r.escalation_reason)}">${escalationLabel(r.escalation_reason)}</span>`
@@ -1072,13 +1109,14 @@ function renderPage() {
     });
   });
 
-  tbody.querySelectorAll(".row-play-btn").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const idx = parseInt(btn.dataset.idx, 10);
-      openDrawer(rows[idx], true);
-    });
-  });
+  // Row-level playback intentionally disabled until dashboard auth is re-enabled.
+  // tbody.querySelectorAll(".row-play-btn").forEach((btn) => {
+  //   btn.addEventListener("click", (e) => {
+  //     e.stopPropagation();
+  //     const idx = parseInt(btn.dataset.idx, 10);
+  //     openDrawer(rows[idx], true);
+  //   });
+  // });
 
   renderPagination(page, totalPages);
 }
