@@ -1,6 +1,6 @@
-# Observe Insurance VoiceAI
+# Aria — AI Claims Agent · Observe Insurance
 
-Inbound claims-support voice agent for Observe Insurance - authentication, claim status, FAQ, escalation, and post-call logging - built with VAPI, Python/FastAPI, Google Sheets, and Airtable.
+Aria is an inbound claims-support voice agent for Observe Insurance — handles authentication, claim status, FAQ, escalation, and post-call logging — built with VAPI, Python/FastAPI, Google Sheets, and Airtable.
 
 **Live :** https://www.heyashish.dev/voice-ai
 
